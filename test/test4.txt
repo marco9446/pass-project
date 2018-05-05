@@ -1,0 +1,48 @@
+//L1: x:=source();
+//L2: y:=source();
+//L3: z:=source();
+//L4: if(z>0){
+//L5: w:=x;
+//L6: }
+//L7: else{
+//L8: w:=0;
+//L9: }
+//L10: sink(w);
+//L11: sink(x);
+//L12: sink(y);
+//L13: sink(z);
+
+source("l1","x").
+source("l2","y").
+source("l3","z").
+
+sink("l10","w").
+sink("l11","x").
+sink("l12","y").
+sink("l13","z").
+
+follows("l2","l1").
+follows("l3","l2").
+follows("l4","l3").
+follows("l5","l4").
+follows("l6","l5").
+follows("l7","l3").
+follows("l8","l7").
+follows("l9","l8").
+follows("l10","l6").
+follows("l10","l9").
+follows("l11","l10").
+follows("l12","l11").
+follows("l13","l12").
+
+
+join("l10","l6","l9").
+
+assign("l5","w","x","0").
+assign("l8","w","0","0").
+
+if("l4","l5","z","0").
+if("l7","l8","z","0").
+
+//expected output: ("l4","x"), ("l4","y"), ("l4","z").
+

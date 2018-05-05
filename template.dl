@@ -1,0 +1,64 @@
+.type label
+.type var
+.type opc = [x:number,c:number] // constant 
+.type opv = [x:number,y:number] // variable
+//.type expr //= number | var | opc | opv
+//.type cond //= [e:expr,constyp:number]// assume 1 for <, 2 for <= and 3 for ==, 4 for >= and 5 for >
+
+// -- inputs --
+.decl source( l:label, x:var )
+.decl sink( l:label, x:var ) 
+.decl follows( l1:label, l2:label) 
+
+.decl join(l1: label, l2: label, l3:label) 
+.decl assign( l:label, x:var, y:var, z:var ) 
+.decl if(l1:label, l2:label, x:var, y:var)
+
+// .input source()
+// .input sink()
+// .input follows()
+// .input join()
+// .input assign()
+// .input if()
+
+
+source("l1","x").
+source("l1","d").	
+	
+follows("l2","l1").
+assign("l2","y","x","z").	
+follows("l3","l2").
+if("l3","l4","y","0").	
+follows("l4","l3").
+assign("l4","y","5","0").	
+follows("l5","l2").
+if("l5","l6","y","0").	
+follows("l6","l5").
+assign("l6","z","2","0").	
+follows("l7","l6").
+follows("l7","l4").
+join("l7","l6","l4").
+sink("l7","d").
+
+
+
+.decl potentials(b:var)
+potentials(b) :- source(_, b), potentials(b).
+potentials(b) :- assign(_, b, c, _), potentials(c).
+potentials(b) :- assign(_, b, _, d), potentials(d).
+potentials(b) :- sink(_ , b), potentials(b).
+
+
+
+
+
+
+// -- output
+.decl sanitize(l1:label, x: var) 
+.output potentials(IO=stdout)
+
+sanitize("l6","y").
+
+// -- analysis --
+
+
