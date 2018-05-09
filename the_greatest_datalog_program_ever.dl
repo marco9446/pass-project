@@ -202,6 +202,20 @@ external_if (i1,e1, j1) :- Loop(i1,e1,j1), Loop(i2,_,j2),
             ord(substr(j2,1,strlen(j2)-1))<ord(substr(e1,1,strlen(e1)-1)).
 
 
+.decl external_if_both_candidate(l:label, e:label, j:label, x:var )
+//.output external_if(IO=stdout)
+external_if_both_candidate (i1,e1, j1, x) :- 
+
+find_belonging_if_of_candidate(i1,l1), 
+candidate(l1,x), find_belonging_if_of_candidate(e1,l2), 
+candidate(l2,x).
+
+.decl external_if_no_both_candidate(l:label, e:label, j:label, x:var )
+//.output external_if(IO=stdout)
+external_if_no_both_candidate (i1,e1, j1, x) :- find_belonging_if_of_candidate(i1,l1),candidate(l1,x), !find_belonging_if_of_candidate(e1,l2), candidate(l2,x).
+//external_if_no_both_candidate (i1,e1, j1, x) :- !find_belonging_if_of_candidate(i1,x), find_belonging_if_of_candidate(e1,x).
+
+
 /**
 *   Return the conditional statements that contains candidates variables inside 
 *   both the if and and else body and has no nested IF
@@ -240,7 +254,13 @@ internal_if_no_both_candidate (i1, e1, j1):- Loop(i1,e1,j1), !external_if(i1,e1,
 
 not_candidate(l,x) :- internal_if_no_both_candidate(l,_,_ ), hypothetical_candidate(l,x).
 not_candidate(l,x) :- internal_if_no_both_candidate(_,l,_ ), hypothetical_candidate(l,x).
-// not_candidate(l,x) :- external_if(i1, e1, j1), (external_if(i2, e2, j2) | (internal_if_both_candidate)), 
+// not_candidate(i1,x) :- external_if(i1, e1, j1), not_candidate(i2,x), 
+// ord(substr(i2,1,strlen(i2)-1))>ord(substr(i1,1,strlen(i1)-1)),
+// ord(substr(i2,1,strlen(i2)-1))<ord(substr(e1,1,strlen(e1)-1)),
+// !candidate(m,x), find_belonging_if_of_candidate(cat(.....), m).
+
+// FALLO PURE SULL'ELSE 
+// not_candidate(l,x) :- external_if(i1, e1, j1), external_if(i2, e2, j2),  
 
 
 .decl reachable(l:label, j:label)
@@ -251,16 +271,16 @@ reachable(X,Y)  :-  reachable(X,Z), follows(Z,Y).
 .decl find_possible_ifs_of_candidate(l:number, j:label)
 .output find_possible_ifs_of_candidate(IO=stdout)
 
-find_possible_ifs_of_candidate(ord(m)-23,l1 ) :- if(l,_,_,_) , candidate(l1,_),  reachable(l1,l), m=substr(l,1,strlen(l)-1).
-
+find_possible_ifs_of_candidate(ord(m)-23,l1 ) :- 
+                if(l,_,_,_) , candidate(l1,_), reachable(l1,l), m=substr(l,1,strlen(l)-1),
+                Loop(l,_,j),
+                ord(substr(l1,1,strlen(l1)-1)) < ord(substr(j,1,strlen(j)-1)).
 
 
 .decl find_belonging_if_of_candidate(j:number , l:label)
 .output find_belonging_if_of_candidate(IO=stdout)
 
 find_belonging_if_of_candidate(j,l) :- find_possible_ifs_of_candidate(_,l), j = max x:{find_possible_ifs_of_candidate(x,l)}.
-
-
 
 
 .decl sanitize(l1:label, x: var) 
