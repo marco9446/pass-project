@@ -161,7 +161,7 @@ Next_line(cat("l", i),cat("l", j)) :-Less(i,j), !Transitive(i,j).
 *   (ex. l2      l10     l18)
 */
 .decl Loop(i:label, e:label, j:label)
-.output Loop(IO=stdout)
+//.output Loop(IO=stdout)
 Loop(i,e,j) :- if(i, _ ,x,y), if(e, _ ,x,y), join(j, l ,_), Next_line(l,e), 
                 Next_line( l2,i),follows(e, l2).
 
@@ -180,19 +180,32 @@ candidate(l, x) :- if(l,_,x,_), candidate(_,x).
 candidate(l, x) :- if(l,_,_,x),candidate(_,x).
 
 
+
+
+.decl find_possible_ifs_of_candidate(l:number, j:label)
+//.output find_possible_ifs_of_candidate(IO=stdout)
+
+find_possible_ifs_of_candidate(ord(m)-23,l1 ) :- 
+                if(l,_,_,_) , candidate(l1,_), reachable(l1,l), m=substr(l,1,strlen(l)-1),
+                Loop(l,_,j),
+                ord(substr(l1,1,strlen(l1)-1)) < ord(substr(j,1,strlen(j)-1)).
+
+
+.decl find_belonging_if_of_candidate(j:number , l:label) //The candidate in label l belongs to the if in line j
+.output find_belonging_if_of_candidate(IO=stdout)
+
+find_belonging_if_of_candidate(j,l) :- find_possible_ifs_of_candidate(_,l), j = max x:{find_possible_ifs_of_candidate(x,l)}.
+
+
+
 .decl hypothetical_candidate(l:label, x:var )
-//.output hypothetical_candidate(IO=stdout)
-// //TODO: PUT AS "HYPOTHETICAL_CANDIDATE" ALL THOSE LABELS WHERE I HAVE AN IF,
-// // AND INSIDE THE IF THERE ARE CANDIDATES...THERE MAY BE EVEN MORE THAN ONE, e.g. if I have two diff so
-// urces
-// //later used inside the Loop
-hypothetical_candidate(l,x) :- if(l,_,x,_).
-// // hyp_candidate :- given a if(l,...) and the corresponding Loop in l, Loop(l,e,j) 
-// //                              there is a candidate in l2, where l2 is inside the loop: l2<l and l2>j
+.output hypothetical_candidate(IO=stdout)
+
+hypothetical_candidate(l,x) :- translate(num,l),find_belonging_if_of_candidate(num,lc) , candidate(lc,x).
 
 
 /**
-*   Returns the position (IF ELSE JOIN) of the if statements contining other
+*   Returns the position (IF ELSE JOIN) of the if statements containing other
 *   IF statements nested inside them
 */
 .decl external_if(l:label, e:label, j:label )
@@ -202,26 +215,13 @@ external_if (i1,e1, j1) :- Loop(i1,e1,j1), Loop(i2,_,j2),
             ord(substr(j2,1,strlen(j2)-1))<ord(substr(e1,1,strlen(e1)-1)).
 
 
-.decl external_if_both_candidate(l:label, e:label, j:label, x:var )
-//.output external_if(IO=stdout)
-external_if_both_candidate (i1,e1, j1, x) :- 
-
-find_belonging_if_of_candidate(i1,l1), 
-candidate(l1,x), find_belonging_if_of_candidate(e1,l2), 
-candidate(l2,x).
-
-.decl external_if_no_both_candidate(l:label, e:label, j:label, x:var )
-//.output external_if(IO=stdout)
-external_if_no_both_candidate (i1,e1, j1, x) :- find_belonging_if_of_candidate(i1,l1),candidate(l1,x), !find_belonging_if_of_candidate(e1,l2), candidate(l2,x).
-//external_if_no_both_candidate (i1,e1, j1, x) :- !find_belonging_if_of_candidate(i1,x), find_belonging_if_of_candidate(e1,x).
-
 
 /**
 *   Return the conditional statements that contains candidates variables inside 
 *   both the if and and else body and has no nested IF
 */
 .decl internal_if_both_candidate(l:label, e:label, j:label ,x:var)
-//.output internal_if_both_candidate(IO=stdout)
+.output internal_if_both_candidate(IO=stdout)
 internal_if_both_candidate (i1,e1, j1, x):- Loop(i1,e1,j1), !external_if(i1,e1,j1),
         (
             ( //There is a candidate between i-e 
@@ -243,24 +243,9 @@ internal_if_both_candidate (i1,e1, j1, x):- Loop(i1,e1,j1), !external_if(i1,e1,j
 */
 // TODO check that there should be at least one candidate
 .decl internal_if_no_both_candidate(l:label, e:label, j:label )
-//.output internal_if_no_both_candidate(IO=stdout)
+.output internal_if_no_both_candidate(IO=stdout)
 internal_if_no_both_candidate (i1, e1, j1):- Loop(i1,e1,j1), !external_if(i1,e1,j1), 
         !internal_if_both_candidate (i1,e1, j1, _).
-
-
-
-.decl not_candidate(l:label, x:var)
-//.output not_candidate(IO=stdout)
-
-not_candidate(l,x) :- internal_if_no_both_candidate(l,_,_ ), hypothetical_candidate(l,x).
-not_candidate(l,x) :- internal_if_no_both_candidate(_,l,_ ), hypothetical_candidate(l,x).
-// not_candidate(i1,x) :- external_if(i1, e1, j1), not_candidate(i2,x), 
-// ord(substr(i2,1,strlen(i2)-1))>ord(substr(i1,1,strlen(i1)-1)),
-// ord(substr(i2,1,strlen(i2)-1))<ord(substr(e1,1,strlen(e1)-1)),
-// !candidate(m,x), find_belonging_if_of_candidate(cat(.....), m).
-
-// FALLO PURE SULL'ELSE 
-// not_candidate(l,x) :- external_if(i1, e1, j1), external_if(i2, e2, j2),  
 
 
 .decl reachable(l:label, j:label)
@@ -268,19 +253,53 @@ reachable(X,Y)  :-  follows(X,Y).
 reachable(X,Y)  :-  reachable(X,Z), follows(Z,Y).
 
 
-.decl find_possible_ifs_of_candidate(l:number, j:label)
-.output find_possible_ifs_of_candidate(IO=stdout)
+.decl external_if_no_both_candidate(l:label, x:var )
+.output external_if_no_both_candidate(IO=stdout)
+external_if_no_both_candidate (l1, x) :-Loop(l1,e1,_),
+                                        find_belonging_if_of_candidate(num1,lc1),
+                                        translate(num1,l1), 
+                                        candidate(lc1,x), 
+                                        !find_belonging_if_of_candidate(num2,lc2), 
+                                        translate(num2,e1),
+                                        candidate(lc2,x).
+       
+.decl external_if_both_candidate(l:label, x:var )
+.output external_if_both_candidate(IO=stdout)
+external_if_both_candidate(l1,x) :- Loop(l1,e1,_),
+                                        find_belonging_if_of_candidate(num1,lc1),
+                                        translate(num1,l1), 
+                                        candidate(lc1,x), 
+                                        find_belonging_if_of_candidate(num2,lc2), 
+                                        translate(num2,e1),
+                                        candidate(lc2,x).
 
-find_possible_ifs_of_candidate(ord(m)-23,l1 ) :- 
-                if(l,_,_,_) , candidate(l1,_), reachable(l1,l), m=substr(l,1,strlen(l)-1),
-                Loop(l,_,j),
-                ord(substr(l1,1,strlen(l1)-1)) < ord(substr(j,1,strlen(j)-1)).
+
+.decl translate(x:number, i:label)
+//.output translate(IO=stdout)
+translate(x,i) :- Labels(i), x=ord(substr(i,1,strlen(i)-1))-23.
 
 
-.decl find_belonging_if_of_candidate(j:number , l:label)
-.output find_belonging_if_of_candidate(IO=stdout)
 
-find_belonging_if_of_candidate(j,l) :- find_possible_ifs_of_candidate(_,l), j = max x:{find_possible_ifs_of_candidate(x,l)}.
+
+.decl not_candidate(l:label, x:var)
+.output not_candidate(IO=stdout)
+
+not_candidate(l,x) :- internal_if_no_both_candidate(l,_,_ ), hypothetical_candidate(l,x).
+not_candidate(l,x) :- internal_if_no_both_candidate(_,l,_ ), hypothetical_candidate(l,x).
+not_candidate(i1,x) :- external_if(i1, e1, _), not_candidate(i2,x),
+        ord(substr(i2,1,strlen(i2)-1))>ord(substr(i1,1,strlen(i1)-1)),
+        ord(substr(i2,1,strlen(i2)-1))<ord(substr(e1,1,strlen(e1)-1)),
+        !external_if_both_candidate(i1,x).
+not_candidate(e1,x) :- external_if(_, e1, j1), not_candidate(i2,x),
+        ord(substr(i2,1,strlen(i2)-1))>ord(substr(e1,1,strlen(e1)-1)),
+        ord(substr(i2,1,strlen(i2)-1))<ord(substr(j1,1,strlen(j1)-1)),
+        !external_if_both_candidate(e1,x).
+
+// FALLO PURE SULL'ELSE 
+// not_candidate(l,x) :- external_if(i1, e1, j1), external_if(i2, e2, j2),  
+
+
+
 
 
 .decl sanitize(l1:label, x: var) 
@@ -290,6 +309,38 @@ find_belonging_if_of_candidate(j,l) :- find_possible_ifs_of_candidate(_,l), j = 
 sanitize(l,x) :- candidate(l,x), sink(_,x).
 //sanitize(l,x) :- candidate(_,x), sink(l,x).
 sanitize(l,x) :- candidate(_,x), if(l,_,x,_).
+
+
+
+
+// 1-  SE C'È UN CANDIDATE CHE SOPRA NON HA IF ALLORA SICURAMENTE LA SANITIZE VA FATTA LÌ
+// 4- PAY ATTENTION TO THE OPC
+
+.decl HC_numbers(x: number ,v:var) //hypotethical candidate with labels converted in number
+.output HC_numbers(IO=stdout)
+HC_numbers(x,v) :- hypothetical_candidate(l1,v),  translate(x,l1).
+
+.decl HC_NON_NOT_CANDIDATE(x:number, v:var)
+.output HC_NON_NOT_CANDIDATE(IO=stdout)
+HC_NON_NOT_CANDIDATE(x,v)  :-  HC_numbers(x,v), translate(x,l1), !not_candidate(l1,v).
+
+// 2- FILTER_UNO: FIRST HYPOTETHICAL CANDIDATE THAT IS NOT A "NOT_CANDIDATE" !
+.decl filter_one(l:number, v:var )
+.output filter_one(IO=stdout)
+filter_one(x, v) :-  HC_NON_NOT_CANDIDATE(_,v), 
+                x = min y:{HC_NON_NOT_CANDIDATE(y,_)}.
+//TODO: Alla fine riconvertire in label.
+
+
+// 3- OTHERWISE INSIDE THE IF WHEN THERE IS NOTHING ELSE ABOVE.
+.decl filter_two(l:number, v:var)
+.output filter_two(IO=stdout)
+
+filter_two(l,v) :- translate(l,l0), candidate(l0,v), !filter_one(l1,v), translate(l1,useless),
+            l<l1,
+            !candidate(l2,v),
+            translate(num2,l2),
+            num2<l.
 
 
 // -- analysis --
