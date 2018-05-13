@@ -1,0 +1,502 @@
+// Authors: Marco Ravazzini & Flavia Cavallaro
+//          with the partecipation of Calcutta
+//		 <3 <3 Calcutta <3 <3
+
+
+
+.type label
+.type var
+.type opc = [x:number,c:number]
+.type opv = [x:number,y:number]
+//.type expr //= number | var | opc | opv
+//.type cond //= [e:expr,constyp:number]// assume 1 for <, 2 for <= and 3 for ==, 4 for >= and 5 for >
+
+// -- inputs --
+.decl source( l:label, x:var )
+.decl sink( l:label, x:var ) 
+.decl follows( l1:label, l2:label) 
+
+.decl join(l1: label, l2: label, l3:label) 
+.decl assign( l:label, x:var, y:var, z:var ) 
+.decl if(l1:label, l2:label, x:var, y:var)
+
+
+source("l1","x").
+source("l2","y").
+source("l3","z").
+
+sink("l10","u").
+
+follows("l2","l1").
+follows("l3","l2").
+follows("l4","l3").
+follows("l5","l4").
+follows("l6","l5").
+follows("l7","l3").
+follows("l8","l7").
+follows("l9","l8").
+follows("l10","l6").
+follows("l10","l9").
+
+join("l10","l6","l9").	
+	
+assign("l5","u","x","y").
+assign("l8","u","z","0").
+
+if("l4","l5","v","0").	
+if("l7","l8","v","0").	
+
+
+
+//##############################################################################
+
+
+
+/**
+*   The Labels function return the labels that indicates each lines 
+*   (ex. l1, l2 ...)
+*/
+.decl Labels(i:label )
+//.output Labels(IO=stdout)
+
+Labels(l) :- source(l,_).
+Labels(l) :- follows(l,_).
+Labels(l) :- follows(_,l).
+
+
+/**
+*   The Numbers function strips the labes in order to optain only the number of
+*   lines, ignoring the first character 
+*/
+.decl Numbers(i:symbol )
+//.output Numbers(IO=stdout)
+Numbers( substr(x,1,strlen(x)-1) ) :- Labels(x), strlen(x) > 1.
+ 
+
+/**
+*   Returns al the lines y that are greater than line x
+*/
+
+.decl Less(x:symbol, y:symbol)
+//.output Less(IO=stdout)
+Less(x,y) :-Numbers(x), Numbers(y), ord(x) < ord(y). 
+
+
+.decl Transitive(x:symbol, y:symbol) 
+//.output Transitive(IO=stdout)
+Transitive(x,z) :-Less(x,y), Less(y,z). 
+
+
+/**
+*   Returns the line i with line i+1 (ex. l1  l2, l2  l3 ecc..)
+*/
+.decl Next_line(i:symbol, j:symbol) // j after i
+//.output Next_line(IO=stdout)
+Next_line(cat("l", i),cat("l", j)) :-Less(i,j), !Transitive(i,j).
+
+
+/**
+*   Return the line of the IF, their respective ELse and the Join 
+*   (ex. l2      l10     l18)
+*/
+.decl Loop(i:label, e:label, j:label)
+.output Loop(IO=stdout)
+Loop(i,e,j) :- if(i, _ ,x,y), if(e, _ ,x,y), join(j, l ,_), Next_line(l,e), 
+                Next_line( l2,i),follows(e, l2).
+
+
+/**
+*   The candidate function return all the variables (and the lines in wich they 
+*   are declareted) that are dependent from the user's input  direcly or as 
+*   reference. Included the conditions of the IF   (ex l1 x, l7 u)
+*/
+.decl candidate( l:label, x: var) 
+.output candidate(IO=stdout)
+candidate(l, x) :- source( l ,x).
+candidate(l, x) :- assign(l,x,y,_), candidate(_,y).
+candidate(l, x) :- assign(l,x,_,z), candidate(_,z).
+candidate(l, x) :- if(l,_,x,_), candidate(_,x).
+candidate(l, x) :- if(l,_,_,x),candidate(_,x).
+
+
+.decl hypothetical_candidate(l:label, x:var )
+//.output hypothetical_candidate(IO=stdout)
+// //TODO: PUT AS "HYPOTHETICAL_CANDIDATE" ALL THOSE LABELS WHERE I HAVE AN IF,
+// // AND INSIDE THE IF THERE ARE CANDIDATES...THERE MAY BE EVEN MORE THAN ONE, e.g. if I have two diff so
+// urces
+// //later used inside the Loop
+hypothetical_candidate(l,x) :- if(l,_,x,_).
+// // hyp_candidate :- given a if(l,...) and the corresponding Loop in l, Loop(l,e,j) 
+// //                              there is a candidate in l2, where l2 is inside the loop: l2<l and l2>j
+
+
+/**
+*   Returns the position (IF ELSE JOIN) of the if statements contining other
+*   IF statements nested inside them
+*/
+.decl external_if(l:label, e:label, j:label )
+//.output external_if(IO=stdout)
+external_if (i1,e1, j1) :- Loop(i1,e1,j1), Loop(i2,_,j2), 
+            ord(substr(i1,1,strlen(i1)-1))<ord(substr(i2,1,strlen(i2)-1)),
+            ord(substr(j2,1,strlen(j2)-1))<ord(substr(e1,1,strlen(e1)-1)).
+
+
+/**
+*   Return the conditional statements that contains candidates variables inside 
+*   both the if and and else body and has no nested IF
+*/
+.decl internal_if_both_candidate(l:label, e:label, j:label ,x:var)
+.output internal_if_both_candidate(IO=stdout)
+internal_if_both_candidate (i1,e1, j1, x):- Loop(i1,e1,j1), !external_if(i1,e1,j1),
+        (
+            ( //There is a candidate between i-e 
+                candidate(l1,x) , 
+                ord(substr(l1,1,strlen(i1)-1))>ord(substr(i1,1,strlen(i1)-1)),
+                ord(substr(l1,1,strlen(i1)-1))<ord(substr(e1,1,strlen(e1)-1))
+            ), //or it is between e-j
+            (   
+                candidate(l2,x),
+                ord(substr(l2,1,strlen(l2)-1))>ord(substr(e1,1,strlen(e1)-1)),
+                ord(substr(l2,1,strlen(l2)-1))<ord(substr(j1,1,strlen(j1)-1))
+            )
+        ).
+
+
+/**
+*   Return the IFs that are internal (they not contains nested if) and they not
+*   contains candidate variables in both the IF and ELSE body 
+*/
+// TODO check that there should be at least one candidate
+.decl internal_if_no_both_candidate(l:label, e:label, j:label )
+//.output internal_if_no_both_candidate(IO=stdout)
+internal_if_no_both_candidate (i1, e1, j1):- Loop(i1,e1,j1), !external_if(i1,e1,j1), 
+        !internal_if_both_candidate (i1,e1, j1, _).
+
+
+
+.decl not_candidate(l:label, x:var)
+//.output not_candidate(IO=stdout)
+
+not_candidate(l,x) :- internal_if_no_both_candidate(l,_,_ ), hypothetical_candidate(l,x).
+not_candidate(l,x) :- internal_if_no_both_candidate(_,l,_ ), hypothetical_candidate(l,x).
+// not_candidate(l,x) :- external_if(i1, e1, j1), (external_if(i2, e2, j2) | (internal_if_both_candidate)), 
+
+
+.decl reachable(l:label, j:label)
+reachable(X,Y)  :-  follows(X,Y).
+reachable(X,Y)  :-  reachable(X,Z), follows(Z,Y).
+
+
+// .decl find_possible_ifs_of_candidate(l:number, j:label)
+// .output find_possible_ifs_of_candidate(IO=stdout)
+
+// find_possible_ifs_of_candidate(ord(m)-23,l1 ) :- if(l,_,_,_) , candidate(l1,_),  reachable(l1,l), m=substr(l,1,strlen(l)-1).
+
+
+
+// .decl find_belonging_if_of_candidate(j:number , l:label)
+// .output find_belonging_if_of_candidate(IO=stdout)
+
+// find_belonging_if_of_candidate(j,l) :- find_possible_ifs_of_candidate(_,l), j = max x:{find_possible_ifs_of_candidate(x,l)}.
+
+
+
+
+.decl sanitize(l1:label, x: var) 
+//.output sanitize(IO=stdout)
+
+
+sanitize(l,x) :- candidate(l,x), sink(_,x).
+//sanitize(l,x) :- candidate(_,x), sink(l,x).
+sanitize(l,x) :- candidate(_,x), if(l,_,x,_).
+
+
+.decl find_source(x:var, s:var)
+.output find_source(IO=stdout)
+find_source(x, s):- x=s, source(_, x).
+find_source(x, s):- candidate(_, x), assign(_, x, s, _), source(_, s).
+find_source(x, s):- candidate(_, x), assign(_, x, _, s), source(_, s).
+
+
+
+.decl sanitize_test(l:label, x: var)
+.output sanitize_test(IO=stdout)
+
+sanitize_test(l, x):- candidate(k, x), source(k, x), Next_line(k, l).
+sanitize_test(l, x):- candidate(l, x), Loop(l, _, _ ).
+sanitize_test(l, x):- sink(l, x), !source(_, x).
+sanitize_test(i1, s):- internal_if_both_candidate(i1, e1, j1, x), find_source(x, s).
+
+sanitize_test(n, x):- internal_if_no_both_candidate(i1, e1, j1), candidate(l, x),
+                ord(substr(i1,1,strlen(i1)-1))<ord(substr(l,1,strlen(l)-1)), Next_line(l, n).
+
+
+
+// -- analysis --
+
+
+
+
+
+
+
+
+
+
+
+&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+
+
+
+
+
+
+// Authors: Marco Ravazzini & Flavia Cavallaro
+//          with the partecipation of Calcutta
+//		 <3 <3 Calcutta <3 <3
+
+
+
+.type label
+.type var
+.type opc = [x:number,c:number]
+.type opv = [x:number,y:number]
+//.type expr //= number | var | opc | opv
+//.type cond //= [e:expr,constyp:number]// assume 1 for <, 2 for <= and 3 for ==, 4 for >= and 5 for >
+
+// -- inputs --
+.decl source( l:label, x:var )
+.decl sink( l:label, x:var ) 
+.decl follows( l1:label, l2:label) 
+
+.decl join(l1: label, l2: label, l3:label) 
+.decl assign( l:label, x:var, y:var, z:var ) 
+.decl if(l1:label, l2:label, x:var, y:var)
+
+
+source("l1","x").
+
+sink("l9","y").
+
+follows("l2","l1").
+follows("l3","l2").
+follows("l4","l3").
+follows("l5","l4").
+follows("l6","l2").
+follows("l7","l6").
+follows("l8","l7").
+follows("l9","l5").
+follows("l9","l8").
+
+join("l9","l5","l8").	
+
+assign("l2","y","x","z").	
+assign("l4","y","5","0").
+assign("l7","z","2","0").
+
+if("l3","l4","z","2").	
+if("l6","l7","z","2").	
+
+//##############################################################################
+
+
+
+/**
+*   The Labels function return the labels that indicates each lines 
+*   (ex. l1, l2 ...)
+*/
+.decl Labels(i:label )
+//.output Labels(IO=stdout)
+
+Labels(l) :- source(l,_).
+Labels(l) :- follows(l,_).
+Labels(l) :- follows(_,l).
+
+
+/**
+*   The Numbers function strips the labes in order to optain only the number of
+*   lines, ignoring the first character 
+*/
+.decl Numbers(i:symbol )
+//.output Numbers(IO=stdout)
+Numbers( substr(x,1,strlen(x)-1) ) :- Labels(x), strlen(x) > 1.
+ 
+
+/**
+*   Returns al the lines y that are greater than line x
+*/
+
+.decl Less(x:symbol, y:symbol)
+//.output Less(IO=stdout)
+Less(x,y) :-Numbers(x), Numbers(y), ord(x) < ord(y). 
+
+
+.decl Transitive(x:symbol, y:symbol) 
+//.output Transitive(IO=stdout)
+Transitive(x,z) :-Less(x,y), Less(y,z). 
+
+
+/**
+*   Returns the line i with line i+1 (ex. l1  l2, l2  l3 ecc..)
+*/
+.decl Next_line(i:symbol, j:symbol) // j after i
+//.output Next_line(IO=stdout)
+Next_line(cat("l", i),cat("l", j)) :-Less(i,j), !Transitive(i,j).
+
+
+/**
+*   Return the line of the IF, their respective ELse and the Join 
+*   (ex. l2      l10     l18)
+*/
+.decl Loop(i:label, e:label, j:label)
+.output Loop(IO=stdout)
+Loop(i,e,j) :- if(i, _ ,x,y), if(e, _ ,x,y), join(j, l ,_), Next_line(l,e), 
+                Next_line( l2,i),follows(e, l2).
+
+
+/**
+*   The candidate function return all the variables (and the lines in wich they 
+*   are declareted) that are dependent from the user's input  direcly or as 
+*   reference. Included the conditions of the IF   (ex l1 x, l7 u)
+*/
+.decl candidate( l:label, x: var) 
+.output candidate(IO=stdout)
+candidate(l, x) :- source( l ,x).
+candidate(l, x) :- assign(l,x,y,_), candidate(_,y).
+candidate(l, x) :- assign(l,x,_,z), candidate(_,z).
+candidate(l, x) :- if(l,_,x,_), candidate(_,x).
+candidate(l, x) :- if(l,_,_,x),candidate(_,x).
+
+
+.decl hypothetical_candidate(l:label, x:var )
+//.output hypothetical_candidate(IO=stdout)
+// //TODO: PUT AS "HYPOTHETICAL_CANDIDATE" ALL THOSE LABELS WHERE I HAVE AN IF,
+// // AND INSIDE THE IF THERE ARE CANDIDATES...THERE MAY BE EVEN MORE THAN ONE, e.g. if I have two diff so
+// urces
+// //later used inside the Loop
+hypothetical_candidate(l,x) :- if(l,_,x,_).
+// // hyp_candidate :- given a if(l,...) and the corresponding Loop in l, Loop(l,e,j) 
+// //                              there is a candidate in l2, where l2 is inside the loop: l2<l and l2>j
+
+
+/**
+*   Returns the position (IF ELSE JOIN) of the if statements contining other
+*   IF statements nested inside them
+*/
+.decl external_if(l:label, e:label, j:label )
+//.output external_if(IO=stdout)
+external_if (i1,e1, j1) :- Loop(i1,e1,j1), Loop(i2,_,j2), 
+            ord(substr(i1,1,strlen(i1)-1))<ord(substr(i2,1,strlen(i2)-1)),
+            ord(substr(j2,1,strlen(j2)-1))<ord(substr(e1,1,strlen(e1)-1)).
+
+
+
+// .decl external_if_both_candidate(l:label, e:label, j:label, x:var )
+// //.output external_if(IO=stdout)
+// external_if_both_candidate (i1,e1, j1, x) :- 
+
+// find_belonging_if_of_candidate(i1,l1), 
+// candidate(l1,x), find_belonging_if_of_candidate(e1,l2), 
+// candidate(l2,x).
+
+// .decl external_if_no_both_candidate(l:label, e:label, j:label, x:var )
+// //.output external_if(IO=stdout)
+// external_if_no_both_candidate (i1,e1, j1, x) :- find_belonging_if_of_candidate(i1,l1),candidate(l1,x), !find_belonging_if_of_candidate(e1,l2), candidate(l2,x).
+// //external_if_no_both_candidate (i1,e1, j1, x) :- !find_belonging_if_of_candidate(i1,x), find_belonging_if_of_candidate(e1,x).
+
+
+/**
+*   Return the conditional statements that contains candidates variables inside 
+*   both the if and and else body and has no nested IF
+*/
+.decl internal_if_both_candidate(l:label, e:label, j:label ,x:var)
+.output internal_if_both_candidate(IO=stdout)
+internal_if_both_candidate (i1,e1, j1, x):- Loop(i1,e1,j1), !external_if(i1,e1,j1),
+        (
+            ( //There is a candidate between i-e 
+                candidate(l1,x) , 
+                ord(substr(l1,1,strlen(i1)-1))>ord(substr(i1,1,strlen(i1)-1)),
+                ord(substr(l1,1,strlen(i1)-1))<ord(substr(e1,1,strlen(e1)-1))
+            ), //or it is between e-j
+            (   
+                candidate(l2,x),
+                ord(substr(l2,1,strlen(l2)-1))>ord(substr(e1,1,strlen(e1)-1)),
+                ord(substr(l2,1,strlen(l2)-1))<ord(substr(j1,1,strlen(j1)-1))
+            )
+        ).
+
+
+/**
+*   Return the IFs that are internal (they not contains nested if) and they not
+*   contains candidate variables in both the IF and ELSE body 
+*/
+// TODO check that there should be at least one candidate
+.decl internal_if_no_both_candidate(l:label, e:label, j:label )
+//.output internal_if_no_both_candidate(IO=stdout)
+internal_if_no_both_candidate (i1, e1, j1):- Loop(i1,e1,j1), !external_if(i1,e1,j1), 
+        !internal_if_both_candidate (i1,e1, j1, _).
+
+
+
+.decl not_candidate(l:label, x:var)
+//.output not_candidate(IO=stdout)
+
+not_candidate(l,x) :- internal_if_no_both_candidate(l,_,_ ), hypothetical_candidate(l,x).
+not_candidate(l,x) :- internal_if_no_both_candidate(_,l,_ ), hypothetical_candidate(l,x).
+// not_candidate(i1,x) :- external_if(i1, e1, j1), not_candidate(i2,x), 
+// ord(substr(i2,1,strlen(i2)-1))>ord(substr(i1,1,strlen(i1)-1)),
+// ord(substr(i2,1,strlen(i2)-1))<ord(substr(e1,1,strlen(e1)-1)),
+// !candidate(m,x), find_belonging_if_of_candidate(cat(.....), m).
+
+// FALLO PURE SULL'ELSE 
+// not_candidate(l,x) :- external_if(i1, e1, j1), external_if(i2, e2, j2),  
+
+
+.decl reachable(l:label, j:label)
+reachable(X,Y)  :-  follows(X,Y).
+reachable(X,Y)  :-  reachable(X,Z), follows(Z,Y).
+
+
+// .decl find_possible_ifs_of_candidate(l:number, j:label)
+// .output find_possible_ifs_of_candidate(IO=stdout)
+
+// find_possible_ifs_of_candidate(ord(m)-23,l1 ) :- if(l,_,_,_) , candidate(l1,_), reachable(l1,l), m=substr(l,1,strlen(l)-1), Loop(l,_,j), ord(substr(l1,1,strlen(l1)-1)) < ord(substr(j,1,strlen(j)-1)).
+
+
+// .decl find_belonging_if_of_candidate(j:number , l:label)
+// .output find_belonging_if_of_candidate(IO=stdout)
+
+find_belonging_if_of_candidate(j,l) :- find_possible_ifs_of_candidate(_,l), j = max x:{find_possible_ifs_of_candidate(x,l)}.
+
+
+.decl sanitize(l1:label, x: var) 
+//.output sanitize(IO=stdout)
+sanitize(l,x) :- candidate(l,x), sink(_,x).
+//sanitize(l,x) :- candidate(_,x), sink(l,x).
+sanitize(l,x) :- candidate(_,x), if(l,_,x,_).
+
+
+.decl find_source(x:var, s:var)
+.output find_source(IO=stdout)
+find_source(x, s):- x=s, source(_, x).
+find_source(x, s):- candidate(_, x), assign(_, x, s, _), source(_, s).
+find_source(x, s):- candidate(_, x), assign(_, x, _, s), source(_, s).
+
+
+
+.decl sanitize_test(l:label, x: var)
+.output sanitize_test(IO=stdout)
+
+sanitize_test(l, x):- candidate(k, x), source(k, x), Next_line(k, l).
+sanitize_test(l, x):- candidate(l, x), Loop(l, _, _ ).
+sanitize_test(l, x):- sink(l, x), !source(_, x).
+sanitize_test(i1, s):- internal_if_both_candidate(i1, e1, j1, x), find_source(x, s).
+sanitize_test(j1, x):- internal_if_both_candidate(i1, e1, j1, x), !source(_, x).
+sanitize_test(n, x):- internal_if_no_both_candidate(i1, e1, j1), candidate(l, x),
+                ord(substr(i1,1,strlen(i1)-1))<ord(substr(l,1,strlen(l)-1)), Next_line(l, n).
+
+
+
+
+
+// -- analysis --
