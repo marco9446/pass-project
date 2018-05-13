@@ -109,11 +109,11 @@ Loop(i,e,j) :- if(i, _ ,x,y), if(e, _ ,x,y), join(j, l ,_), Next_line(l,e),
 .decl candidate( l:label, x: var) 
 .output candidate(IO=stdout)
 candidate(l, x) :- source( l ,x).
-candidate(l, x) :- assign(l,x,y,_), candidate(_,y).
+candidate(l, x) :- assign(l,x,y,z), candidate(_,y), !candidate(_,z) , 
 candidate(l, x) :- assign(l,x,_,z), candidate(_,z).
 candidate(l, x) :- if(l,_,x,_), candidate(_,x).
 candidate(l, x) :- if(l,_,_,x),candidate(_,x).
-
+candidate(l, x) :- 
 
 
 .decl find_possible_ifs_of_candidate(l:number, j:label)
