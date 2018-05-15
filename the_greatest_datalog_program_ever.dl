@@ -21,30 +21,28 @@
 .decl if(l1:label, l2:label, x:var, y:var)
 
 
+	
 source("l1","x").
 
-sink("l9","y").
+sink("l8","z").	
 
 follows("l2","l1").
 follows("l3","l2").
 follows("l4","l3").
-follows("l5","l4").
-follows("l6","l2").
+follows("l5","l1").
+follows("l6","l5").
 follows("l7","l6").
+follows("l8","l4").
 follows("l8","l7").
-follows("l9","l5").
-follows("l9","l8").
 
-join("l9","l5","l8").	
+join("l8","l4","l7").
 
-assign("l2","y","x","z").	
-assign("l4","y","5","0").
-assign("l7","z","2","0").
-
-if("l3","l4","z","2").	
-if("l6","l7","z","2").	
+assign("l3","z","0","0").
+assign("l6","z","1","0").
 
 
+if("l2","l3","x","0").
+if("l5","l6","x","0").
 
 
 
@@ -127,14 +125,14 @@ candidate(l, x) :- assign(l,x,_,z), candidate(_,z).
 smart_loop(i, e, j) :- 
     if(i, _ , a, b), 
     if(e, _ , a, b), i!=e, 
-    join(j, q, w),
+    join(j, q, _),
     ord(q) = ord(e)-1,
     follows(i, l), follows(e, l).
 
 .decl external_if(i:label, e:label, j:label)
 .output external_if(IO=stdout)
 
-external_if(i,e,j) :- smart_loop(i,e,j), smart_loop(i2,_,j2), 
+external_if(i,e,j) :- smart_loop(i,e,j), smart_loop(i2,_,_), 
             ord(substr(i2,1,strlen(i2)-1)) > ord(substr(i,1,strlen(i)-1)),
             ord(substr(i2,1,strlen(i2)-1)) < ord(substr(j,1,strlen(j)-1)).
 
@@ -175,6 +173,19 @@ constant_finder(l,y, x ) :- assign(l,y,"0",x), match("[0-9]",x).
 //             ord(substr(l3,1,strlen(l3)-1)) > ord(substr(e1,1,strlen(e1)-1)),
 //             ord(substr(l3,1,strlen(l3)-1)) < ord(substr(j1,1,strlen(j1)-1)).
 
+
+
+// In teoria il caso 1, copre i casi in cui sopra UN If-else c'è un assign, in realtà non funziona
+//bene per motivi ignoti.
+//Invece questo test copre i casi in cui sopra l'if non ci sono assignments.
+
 .decl T3(l:label, x:var)
 .output T3(IO=stdout)
-T3(l,x) :- 
+T3(l1,x) :- sink(_,y), smart_loop(i1,e1,j1), !assign(l,y,x,_),candidate(_,x), Labels(l),
+            ord(substr(l,1,strlen(l)-1)) > ord(substr(i1,1,strlen(i1)-1)),
+            ord(substr(l,1,strlen(l)-1)) < ord(substr(e1,1,strlen(e1)-1)),
+            assign(l1,y,x,_),
+            ord(substr(l1,1,strlen(l1)-1)) > ord(substr(e1,1,strlen(e1)-1)),
+            ord(substr(l1,1,strlen(l1)-1)) < ord(substr(j1,1,strlen(j1)-1)).
+            
+
