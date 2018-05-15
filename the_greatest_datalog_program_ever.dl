@@ -20,6 +20,7 @@
 .decl assign( l:label, x:var, y:var, z:var ) 
 .decl if(l1:label, l2:label, x:var, y:var)
 
+
 source("l1","x").
 
 sink("l9","y").
@@ -45,14 +46,16 @@ if("l6","l7","z","2").
 
 
 
+
+
 //##############################################################################
 
 
 
-/**
-*   The Labels function return the labels that indicates each lines 
-*   (ex. l1, l2 ...)
-*/
+// /**
+// *   The Labels function return the labels that indicates each lines 
+// *   (ex. l1, l2 ...)
+// */
 .decl Labels(i:label )
 //.output Labels(IO=stdout)
 
@@ -61,45 +64,45 @@ Labels(l) :- follows(l,_).
 Labels(l) :- follows(_,l).
 
 
-/**
-*   The Numbers function strips the labes in order to optain only the number of
-*   lines, ignoring the first character 
-*/
-.decl Numbers(i:symbol )
-//.output Numbers(IO=stdout)
-Numbers( substr(x,1,strlen(x)-1) ) :- Labels(x), strlen(x) > 1.
+// /**
+// *   The Numbers function strips the labes in order to optain only the number of
+// *   lines, ignoring the first character 
+// */
+// .decl Numbers(i:symbol )
+// //.output Numbers(IO=stdout)
+// Numbers( substr(x,1,strlen(x)-1) ) :- Labels(x), strlen(x) > 1.
  
 
-/**
-*   Returns al the lines y that are greater than line x
-*/
+// /**
+// *   Returns al the lines y that are greater than line x
+// */
 
-.decl Less(x:symbol, y:symbol)
-//.output Less(IO=stdout)
-Less(x,y) :-Numbers(x), Numbers(y), ord(x) < ord(y). 
-
-
-.decl Transitive(x:symbol, y:symbol) 
-//.output Transitive(IO=stdout)
-Transitive(x,z) :-Less(x,y), Less(y,z). 
+// .decl Less(x:symbol, y:symbol)
+// //.output Less(IO=stdout)
+// Less(x,y) :-Numbers(x), Numbers(y), ord(x) < ord(y). 
 
 
-/**
-*   Returns the line i with line i+1 (ex. l1  l2, l2  l3 ecc..)
-*/
-.decl Next_line(i:symbol, j:symbol) // j after i
-.output Next_line(IO=stdout)
-Next_line(cat("l", i),cat("l", j)) :-Less(i,j), !Transitive(i,j).
+// .decl Transitive(x:symbol, y:symbol) 
+// //.output Transitive(IO=stdout)
+// Transitive(x,z) :-Less(x,y), Less(y,z). 
 
 
-/**
-*   Return the line of the IF, their respective ELse and the Join 
-*   (ex. l2      l10     l18)
-*/
-.decl Loop(i:label, e:label, j:label)
-.output Loop(IO=stdout)
-Loop(i,e,j) :- if(i, _ ,x,y), if(e, _ ,x,y), join(j, l ,_), Next_line(l,e), 
-                Next_line( l2,i),follows(e, l2).
+// /**
+// *   Returns the line i with line i+1 (ex. l1  l2, l2  l3 ecc..)
+// */
+// .decl Next_line(i:symbol, j:symbol) // j after i
+// .output Next_line(IO=stdout)
+// Next_line(cat("l", i),cat("l", j)) :-Less(i,j), !Transitive(i,j).
+
+
+// /**
+// *   Return the line of the IF, their respective ELse and the Join 
+// *   (ex. l2      l10     l18)
+// */
+// .decl Loop(i:label, e:label, j:label)
+// .output Loop(IO=stdout)
+// Loop(i,e,j) :- if(i, _ ,x,y), if(e, _ ,x,y), join(j, l ,_), Next_line(l,e), 
+//                 Next_line( l2,i),follows(e, l2).
 
 
 /**
@@ -107,18 +110,71 @@ Loop(i,e,j) :- if(i, _ ,x,y), if(e, _ ,x,y), join(j, l ,_), Next_line(l,e),
 *   are declareted) that are dependent from the user's input  direcly or as 
 *   reference. Included the conditions of the IF   (ex l1 x, l7 u)
 */
+
+
 .decl candidate( l:label, x: var) 
 .output candidate(IO=stdout)
 candidate(l, x) :- source( l ,x).
-candidate(l, x) :- assign(l,x,y,z), candidate(_,y).
+candidate(l, x) :- assign(l,x,y,_), candidate(_,y).
 candidate(l, x) :- assign(l,x,_,z), candidate(_,z).
-candidate(l, x) :- if(l,_,x,_), candidate(_,x).
-candidate(l, x) :- if(l,_,_,x),candidate(_,x).
+// candidate(l, x) :- if(l,_,x,_), candidate(_,x).
+// candidate(l, x) :- if(l,_,_,x),candidate(_,x).
 
 
 
+.decl smart_loop(i: label, e: label, j: label)
+.output smart_loop(IO=stdout)
+smart_loop(i, e, j) :- 
+    if(i, _ , a, b), 
+    if(e, _ , a, b), i!=e, 
+    join(j, q, w),
+    ord(q) = ord(e)-1,
+    follows(i, l), follows(e, l).
+
+.decl external_if(i:label, e:label, j:label)
+.output external_if(IO=stdout)
+
+external_if(i,e,j) :- smart_loop(i,e,j), smart_loop(i2,_,j2), 
+            ord(substr(i2,1,strlen(i2)-1)) > ord(substr(i,1,strlen(i)-1)),
+            ord(substr(i2,1,strlen(i2)-1)) < ord(substr(j,1,strlen(j)-1)).
+
+.decl internal_if(i:label, e:label, j:label)
+.output internal_if(IO=stdout)
+
+internal_if(i,e,j) :- smart_loop(i,e,j), !external_if(i,e,j).
 
 
+.decl constant_finder(l:label, y:var, n:var)
+.output constant_finder(IO=stdout)
+constant_finder(l,y, x ) :- assign(l,y,x,"0"), match("[0-9]",x).
+constant_finder(l,y, x ) :- assign(l,y,"0",x), match("[0-9]",x).
 
+// .decl T1(l:label, x:var )
+// .output T1(IO=stdout)
+// T1(j1,x) :-  sink(_,x), 
+//             assign(l,x,y,_),
+//             candidate(_,y),
+//             internal_if(l1,e1,j1),
+//             ord(substr(l1,1,strlen(l1)-1)) > ord(substr(l,1,strlen(l)-1)),
+//             constant_finder(l2,x,_), 
+//             ord(substr(l2,1,strlen(l2)-1)) > ord(substr(e1,1,strlen(e1)-1)),
+//             ord(substr(l2,1,strlen(l2)-1))  < ord(substr(e1,1,strlen(e1)-1)),
+//             !constant_finder(l3,x,_), Labels(l3), l3!=l2,
+//             ord(substr(l3,1,strlen(l3)-1)) > ord(substr(e1,1,strlen(e1)-1)),
+//             ord(substr(l3,1,strlen(l3)-1)) < ord(substr(j1,1,strlen(j1)-1)).
 
+// T1(e1,x) :-  sink(_,x), 
+//             assign(l,x,y,_),
+//             candidate(_,y),
+//             internal_if(l1,e1,j1), 
+//             ord(substr(l1,1,strlen(l1)-1)) > ord(substr(l,1,strlen(l)-1)),
+//             !constant_finder(l2,y1,_), Labels(l2),
+//             ord(substr(l2,1,strlen(l2)-1)) > ord(substr(l1,1,strlen(l1)-1)),
+//             ord(substr(l2,1,strlen(l2)-1)) < ord(substr(e1,1,strlen(e1)-1)),
+//             constant_finder(l3,y1,_), Labels(l3),
+//             ord(substr(l3,1,strlen(l3)-1)) > ord(substr(e1,1,strlen(e1)-1)),
+//             ord(substr(l3,1,strlen(l3)-1)) < ord(substr(j1,1,strlen(j1)-1)).
 
+.decl T3(l:label, x:var)
+.output T3(IO=stdout)
+T3(l,x) :- 
