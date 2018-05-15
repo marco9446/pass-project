@@ -2,7 +2,7 @@
 
 
 
-a="./test"
+a="./test/test"
 b= $2
 c=".txt"
 d=$a$b$c
