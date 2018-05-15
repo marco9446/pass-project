@@ -21,6 +21,7 @@
 .decl if(l1:label, l2:label, x:var, y:var)
 
 
+	
 source("l1","x").
 
 sink("l8","z").	
@@ -38,11 +39,16 @@ join("l8","l4","l7").
 
 assign("l3","z","0","0").
 assign("l6","z","1","0").
+<<<<<<< HEAD
 
+=======
+>>>>>>> 554d7aac3eb01b04a721f2d1ac060c8b0133524b
 
 if("l2","l3","x","0").
 if("l5","l6","x","0").
 
+if("l2","l3","x","0").
+if("l5","l6","x","0").
 
 
 
@@ -125,14 +131,14 @@ candidate(l, x) :- if(l,_,_,x),candidate(_,x).
 smart_loop(i, e, j) :- 
     if(i, _ , a, b), 
     if(e, _ , a, b), i!=e, 
-    join(j, q, w),
+    join(j, q, _),
     ord(q) = ord(e)-1,
     follows(i, l), follows(e, l).
 
 .decl external_if(i:label, e:label, j:label)
 .output external_if(IO=stdout)
 
-external_if(i,e,j) :- smart_loop(i,e,j), smart_loop(i2,_,j2), 
+external_if(i,e,j) :- smart_loop(i,e,j), smart_loop(i2,_,_), 
             ord(substr(i2,1,strlen(i2)-1)) > ord(substr(i,1,strlen(i)-1)),
             ord(substr(i2,1,strlen(i2)-1)) < ord(substr(j,1,strlen(j)-1)).
 
@@ -183,3 +189,19 @@ T2(l,x) :-  sink(_, v),
             ord(substr(p1,1,strlen(p1)-1)) > ord(substr(i1,1,strlen(i1)-1)),
             ord(substr(p1,1,strlen(p1)-1)) < ord(substr(j1,1,strlen(j1)-1)).
       
+
+
+// In teoria il caso 1, copre i casi in cui sopra UN If-else c'è un assign, in realtà non funziona
+//bene per motivi ignoti.
+//Invece questo test copre i casi in cui sopra l'if non ci sono assignments.
+
+.decl T3(l:label, x:var)
+.output T3(IO=stdout)
+T3(l1,x) :- sink(_,y), smart_loop(i1,e1,j1), !assign(l,y,x,_),candidate(_,x), Labels(l),
+            ord(substr(l,1,strlen(l)-1)) > ord(substr(i1,1,strlen(i1)-1)),
+            ord(substr(l,1,strlen(l)-1)) < ord(substr(e1,1,strlen(e1)-1)),
+            assign(l1,y,x,_),
+            ord(substr(l1,1,strlen(l1)-1)) > ord(substr(e1,1,strlen(e1)-1)),
+            ord(substr(l1,1,strlen(l1)-1)) < ord(substr(j1,1,strlen(j1)-1)).
+            
+
