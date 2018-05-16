@@ -1,0 +1,334 @@
+.type label
+.type var
+.type opc = [x:number,c:number]
+.type opv = [x:number,y:number]
+//.type expr //= number | var | opc | opv
+//.type cond //= [e:expr,constyp:number]// assume 1 for <, 2 for <= and 3 for ==, 4 for >= and 5 for >
+
+// -- inputs --
+.decl source( l:label, x:var )
+.decl sink( l:label, x:var ) 
+.decl follows( l1:label, l2:label) 
+
+.decl join(l1: label, l2: label, l3:label) 
+.decl assign( l:label, x:var, y:var, z:var ) 
+.decl if(l1:label, l2:label, x:var, y:var)
+
+
+
+
+
+/**
+*   The Labels function return the labels that indicates each lines 
+*   (ex. l1, l2 ...)
+*/
+.decl Labels(i:label )
+//.output Labels(IO=stdout)
+
+Labels(l) :- source(l,_).
+Labels(l) :- follows(l,_).
+Labels(l) :- follows(_,l).
+
+
+/**
+*   The Numbers function strips the labes in order to optain only the number of
+*   lines, ignoring the first character 
+*/
+.decl Numbers(i:symbol )
+//.output Numbers(IO=stdout)
+Numbers( substr(x,1,strlen(x)-1) ) :- Labels(x), strlen(x) > 1.
+ 
+
+/**
+*   Returns al the lines y that are greater than line x
+*/
+
+.decl Less(x:symbol, y:symbol)
+//.output Less(IO=stdout)
+Less(x,y) :-Numbers(x), Numbers(y), ord(x) < ord(y). 
+
+
+.decl Transitive(x:symbol, y:symbol) 
+//.output Transitive(IO=stdout)
+Transitive(x,z) :-Less(x,y), Less(y,z). 
+
+
+/**
+*   Returns the line i with line i+1 (ex. l1  l2, l2  l3 ecc..)
+*/
+.decl Next_line(i:symbol, j:symbol) // j after i
+//.output Next_line(IO=stdout)
+Next_line(cat("l", i),cat("l", j)) :-Less(i,j), !Transitive(i,j).
+
+
+
+.decl candidate( l:label, x: var) 
+.output candidate(IO=stdout)
+candidate(l, x) :- source( l ,x).
+candidate(l, x) :- assign(l,x,y,_), candidate(_,y).
+candidate(l, y) :- assign(l,_,y,_), candidate(_,y).
+
+candidate(l, x) :- assign(l,x,_,z), candidate(_,z).
+candidate(l, z) :- assign(l,_,_,z), candidate(_,z).
+
+
+.decl to_check(  x: var) 
+//.output to_check(IO=stdout)
+to_check( x) :- sink( _ ,x), !first_sanitize(_,x).
+
+.decl changed_source_sink( x:var)
+//.output changed_source_sink(IO=stdout)
+
+changed_source_sink(x) :-source(l,x),
+                            sink(_,x),
+                            (assign(_,x,_,_);
+                             assign(_,_,x,_);
+                             assign(_,_,_,x);
+                             if(_,_,x,_);
+                             if(_,_,_,x)
+                            ).
+
+//This first sanitize is used for all those variables that 
+//are taken from source and used in the sink and never used again in
+//the code, as assignments or if conditions, therefore the only thing left
+//to do is to sanitize them after the source.
+//it would have been the same in the sink
+
+.decl first_sanitize(l1:label, x: var) 
+//.output first_sanitize(IO=stdout)
+first_sanitize(ld,x) :-   Next_line(l,ld),
+                    source(l,x), 
+                    sink(_,x), 
+                    !(changed_source_sink(x)).
+
+
+
+/**
+*   Return the line of the IF, their respective ELse and the Join 
+*   (ex. l2      l10     l18)
+*/
+.decl if_else(i:label, e:label, j:label) #IF_ELSE_JOIN
+//.output if_else(IO=stdout)
+if_else(i,e,j) :- if(i, _ ,x,y), if(e, _ ,x,y), join(j, l ,_), Next_line(l,e), 
+                Next_line( l2,i),follows(e, l2).
+
+
+
+
+.decl find_possible_ifs_of_vars_to_check(l:label, j:label, v:var) #var v, in label l, that is inside if in label j,
+//.output find_possible_ifs_of_vars_to_check(IO=stdout)
+
+find_possible_ifs_of_vars_to_check(l1,l,x ) :- 
+                if(l,_,_,_) , assign(l1,x,_,_), to_check(x),reachable(l1,l),
+                if_else(l,e,_),
+                ord(substr(l1,1,strlen(l1)-1)) < ord(substr(e,1,strlen(e)-1)),
+                ord(substr(l1,1,strlen(l1)-1)) > ord(substr(l,1,strlen(l)-1)).
+
+find_possible_ifs_of_vars_to_check(l1,l,x ) :- 
+                if(l,_,_,_) , assign(l1,x,_,_), to_check(x), reachable(l1,l),
+                if_else(_,e,j),
+                ord(substr(l1,1,strlen(l1)-1)) > ord(substr(e,1,strlen(e)-1)),
+                ord(substr(l1,1,strlen(l1)-1)) < ord(substr(j,1,strlen(j)-1)).
+                
+.decl find_not_belonging_if_of_vars_to_check(l:label, j:label, v:var) //The variable var in label l belongs to the if in line j
+//.output find_not_belonging_if_of_vars_to_check(IO=stdout)
+
+find_not_belonging_if_of_vars_to_check(l_var,l1_if,var) :-  find_possible_ifs_of_vars_to_check(l_var,l1_if,var),
+                                        find_possible_ifs_of_vars_to_check(l_var,l2_if,var),
+                                        ord(substr(l2_if,1,strlen(l2_if)-1)) > ord(substr(l1_if,1,strlen(l1_if)-1)),
+                                        ord(substr(l_var,1,strlen(l_var)-1)) > ord(substr(l1_if,1,strlen(l1_if)-1)),
+                                        ord(substr(l_var,1,strlen(l_var)-1)) > ord(substr(l2_if,1,strlen(l2_if)-1)).
+
+
+
+.decl find_belonging_if_of_vars_to_check(l:label, j:label, v:var) //The variable var in label l belongs to the if in line j
+//.output find_belonging_if_of_vars_to_check(IO=stdout)
+
+find_belonging_if_of_vars_to_check(l_var,l1_if,var) :-  find_possible_ifs_of_vars_to_check(l_var,l1_if,var),
+                                        !find_not_belonging_if_of_vars_to_check(l_var,l1_if,var).
+
+
+
+.decl find_dependencies_of_vars_to_check (l:label, v:var, d:var) //var v in label l, depends on var d
+.output find_dependencies_of_vars_to_check(IO=stdout)
+//Find dependencies that are due to the conditions on the if statemet
+find_dependencies_of_vars_to_check(l,v,d) :- find_possible_ifs_of_vars_to_check(l,l_if,v), 
+                                            (if(l_if,_,d,_);if(l_if,_,_,d)), 
+                                            ord(substr(l_if,1,strlen(l_if)-1)) < ord(substr(l,1,strlen(l)-1)),
+                                            candidate(_,d).
+
+//Find dependencies due to assignments in the if-else.
+find_dependencies_of_vars_to_check(l,v,a) :-    find_belonging_if_of_vars_to_check(l,l_if,v),
+                                                (assign(l,v,a,_) ; assign(l,v,_,a)), candidate(l2,a),
+                                                ord(substr(l2,1,strlen(l2)-1)) < ord(substr(l,1,strlen(l)-1)),
+                                                if_else(if1,else1,_), l_if=if1,
+                                                ord(substr(l,1,strlen(l)-1)) > ord(substr(if1,1,strlen(if1)-1)),
+                                                ord(substr(l,1,strlen(l)-1)) < ord(substr(else1,1,strlen(else1)-1)).
+
+find_dependencies_of_vars_to_check(l,v,a) :-    find_belonging_if_of_vars_to_check(l,l_if,v),
+                                                (assign(l,v,a,_) ; assign(l,v,_,a)), candidate(l2,a),
+                                                ord(substr(l2,1,strlen(l2)-1)) < ord(substr(l,1,strlen(l)-1)),
+                                                if_else(_,else1,join1), l_if=if1,
+                                                ord(substr(l,1,strlen(l)-1)) > ord(substr(else1,1,strlen(else1)-1)),
+                                                ord(substr(l,1,strlen(l)-1)) < ord(substr(join1,1,strlen(join1)-1)).
+
+
+
+
+
+
+/**
+*   Returns the position (IF ELSE JOIN) of the if statements containing other
+*   IF statements nested inside them
+*/
+.decl external_if(l:label, e:label, j:label )
+//.output external_if(IO=stdout)
+external_if (i1,e1, j1) :- if_else(i1,e1,j1), if_else(i2,_,j2), 
+            ord(substr(i1,1,strlen(i1)-1))<ord(substr(i2,1,strlen(i2)-1)),
+            ord(substr(j2,1,strlen(j2)-1))<ord(substr(e1,1,strlen(e1)-1)).
+
+
+
+.decl internal_if(l:label, e:label, j:label )
+//.output internal_if(IO=stdout)
+internal_if (i1,e1, j1) :- if_else(i1,e1,j1), !external_if(i1,e1, j1).
+
+
+
+/**
+*   Return the conditional statements that contains candidates variables inside 
+*   both the if and and else body and has no nested IF
+*/
+.decl internal_if_both_dependency(l:label, e:label, j:label ,x:var)
+//.output internal_if_both_dependency(IO=stdout)
+internal_if_both_dependency(i1,e1, j1, dep):- internal_if(i1,e1,j1),
+                                            find_dependencies_of_vars_to_check(l_var, var, dep),
+                                            ord(substr(l_var,1,strlen(l_var)-1))>ord(substr(i1,1,strlen(i1)-1)),
+                                            ord(substr(l_var,1,strlen(l_var)-1))<ord(substr(e1,1,strlen(e1)-1)),
+                                            
+                                            find_dependencies_of_vars_to_check(l2_var, var1, dep),
+                                            ord(substr(l2_var,1,strlen(l2_var)-1))>ord(substr(e1,1,strlen(e1)-1)),
+                                            ord(substr(l2_var,1,strlen(l2_var)-1))<ord(substr(j1,1,strlen(j1)-1)).
+
+//Used to save where to the variable taken from the source is assigned something else.
+.decl internal_if_both_source_assignment(l:label, e:label, j:label ,x:var)
+//.output internal_if_both_source_assignment(IO=stdout)
+internal_if_both_source_assignment(i1,e1, j1, var):- internal_if(i1,e1,j1),
+                                            assign(l_var, var, _,_),
+                                            ord(substr(l_var,1,strlen(l_var)-1))>ord(substr(i1,1,strlen(i1)-1)),
+                                            ord(substr(l_var,1,strlen(l_var)-1))<ord(substr(e1,1,strlen(e1)-1)),
+                                            
+                                            assign(l2_var, var, _,_),
+                                            ord(substr(l2_var,1,strlen(l2_var)-1))>ord(substr(e1,1,strlen(e1)-1)),
+                                            ord(substr(l2_var,1,strlen(l2_var)-1))<ord(substr(j1,1,strlen(j1)-1)).
+
+
+
+.decl reachable(l:label, j:label)
+reachable(X,Y)  :-  follows(X,Y).
+reachable(X,Y)  :-  reachable(X,Z), follows(Z,Y).
+
+
+// .decl external_if_no_both_candidate(l:label, x:var )
+// .output external_if_no_both_candidate(IO=stdout)
+// external_if_no_both_candidate (l1, x) :-if_else(l1,e1,_),
+//                                         find_belonging_if_of_candidate(num1,lc1),
+//                                         translate(num1,l1), 
+//                                         candidate(lc1,x), 
+//                                         !find_belonging_if_of_candidate(num2,lc2), 
+//                                         translate(num2,e1),
+//                                         candidate(lc2,x).
+       
+// .decl external_if_both_candidate(l:label, x:var )
+// .output external_if_both_candidate(IO=stdout)
+// external_if_both_candidate(l1,x) :- if_else(l1,e1,_),
+//                                         find_belonging_if_of_candidate(num1,lc1),
+//                                         translate(num1,l1), 
+//                                         candidate(lc1,x), 
+//                                         find_belonging_if_of_candidate(num2,lc2), 
+//                                         translate(num2,e1),
+//                                         candidate(lc2,x).
+
+
+.decl translate(x:number, i:label)
+//.output translate(IO=stdout)
+translate(x,i) :- Labels(i), x=ord(substr(i,1,strlen(i)-1))-ord("a").
+
+
+//TODO: May be optimized to cover the cases when there are multiple loops, not nested but one after another.
+
+.decl nested_if(i:label ,e:label ,j:label )
+//.output nested_if(IO=stdout)
+
+nested_if(i1,e1,j1) :- if_else(i1,e1,j1), if_else(i2,e2,j2), i2!=i1,e1!=e2,j1!=j2.
+
+.decl no_nested_if(i:label ,e:label ,j:label )
+//.output no_nested_if(IO=stdout)
+
+no_nested_if(i1,e1,j1) :- if_else(i1,e1,j1), !nested_if(i1,e1,j1).
+
+//SECOND SANITIZE covers the cases when there are no nested loops. The strategy is the following:
+//1- If, there are both in the if and else a dependency for the same variable, e.g. x, then do the sanitize
+//outside the if, before the if-else.
+
+.decl second_sanitize(l:label , x:var)
+.output second_sanitize(IO=stdout)
+
+
+//If the variable "dep" is a dependency in both if and else
+second_sanitize(i1,dep) :- no_nested_if(i1,e1,j1), internal_if_both_dependency(i1,e1,j1,dep).
+
+//If is in only one of them BUT THAT DEP IS NOT IN THE SINK, then do it there. 
+second_sanitize(ls,dep) :- no_nested_if(i1,e1,j1), !internal_if_both_dependency(i1,e1,j1,dep),
+                            find_dependencies_of_vars_to_check(l,var,dep),
+                            ( (ord(substr(l,1,strlen(l)-1))>ord(substr(i1,1,strlen(i1)-1)),
+                            ord(substr(l,1,strlen(l)-1))<ord(substr(e1,1,strlen(e1)-1)));
+                            (ord(substr(l,1,strlen(l)-1))>ord(substr(e1,1,strlen(e1)-1)),
+                            ord(substr(l,1,strlen(l)-1))<ord(substr(j1,1,strlen(j1)-1)))
+                            ), 
+                            find_belonging_if_of_vars_to_check(l,l_if,var), Next_line(l_if,ls),
+                            !sink(_,dep).
+
+//OTHERWISE, IF IT IS IN ONE OF THEM BUT ALSO IN THE SINK, THEN DO IT OUTSIDE.
+second_sanitize(i1,dep) :- no_nested_if(i1,e1,j1), !internal_if_both_dependency(i1,e1,j1,dep),
+                            find_dependencies_of_vars_to_check(l,var,dep),
+                            ( (ord(substr(l,1,strlen(l)-1))>ord(substr(i1,1,strlen(i1)-1)),
+                            ord(substr(l,1,strlen(l)-1))<ord(substr(e1,1,strlen(e1)-1)));
+                            (ord(substr(l,1,strlen(l)-1))>ord(substr(e1,1,strlen(e1)-1)),
+                            ord(substr(l,1,strlen(l)-1))<ord(substr(j1,1,strlen(j1)-1)))
+                            ), sink(_,dep).
+
+
+
+
+
+.decl third_sanitize(l:label, x:var)
+.output third_sanitize(IO=stdout)
+//FAI IL SANITIZE DI QUANTO HO DELLE VARIABILI NEL SINK CHE SONO DELLE SOURCE. QUANDO VENGONO MODIFICAT
+//IN UN PUNTO MA NON IN UN ALTRO ALLORA VA FATTO IL SANITIZE DOVE NON SNO MODIFICATE.
+
+//Qua l assign sta nell'if quindi metto nell'else
+third_sanitize(e2,x) :- no_nested_if(i1,e1,j1), Next_line(e1,e2),!internal_if_both_source_assignment(i1,e1,j1,x),
+                        sink(_,x), source(_,x), assign(l,x,_,_),
+                        ord(substr(l,1,strlen(l)-1))>ord(substr(i1,1,strlen(i1)-1)),
+                        ord(substr(l,1,strlen(l)-1))<ord(substr(e1,1,strlen(e1)-1)).
+
+third_sanitize(i2,x) :- no_nested_if(i1,e1,j1), Next_line(i1,i2), !internal_if_both_source_assignment(i1,e1,j1,x),
+                        sink(_,x), source(_,x), assign(l,x,_,_),
+                        ord(substr(l,1,strlen(l)-1))>ord(substr(e1,1,strlen(e1)-1)),
+                        ord(substr(l,1,strlen(l)-1))<ord(substr(j1,1,strlen(j1)-1)).
+                        
+//-------------------------------------------FINE --> UNION_OF_SANITIZE.-----------------------------------
+////////////////////////////////////////////////
+//IMPORTANTE,  SOL FINALE:          1- FIRST_SANITIZE
+//IMPORTANTE, ALLA FINE POTREI AGGIUNGERE CHE SE C'È QUALCHE VARIABILE,DOPO I VARI IF, CHE VIENE MODIFICATA
+//ALLORA ELIMINA TUTTE LE DEPENDCY PRECEDENTI COLLEGATE A QUELLA VARIABILE.
+.decl final_sanitize(l:label , x:var)
+.output final_sanitize(IO=stdout)
+
+final_sanitize(l,x) :- first_sanitize(l,x).
+final_sanitize(l,x) :- second_sanitize(l,x).
+
+
+//TODO: QUANDO METTI LE DEPENDENCIES PUOI , IN QUELLI CHE VENGONO SETTATI COME COSTANTI, SOLO
+// LE DEPENDENCEIS RELATIVE AGLI IF PRECEDENTI.

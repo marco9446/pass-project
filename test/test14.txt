@@ -17,7 +17,7 @@ source("l2","y").
 source("l3","z").
 
 sink("l10","x").
-sink("l11”,”y”).
+sink("l11","y").
 sink("l12","v").
 
 follows("l2","l1").
