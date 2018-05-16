@@ -72,6 +72,9 @@ candidate(l, x) :- assign(l,x,_,z), candidate(_,z).
 candidate(l, z) :- assign(l,_,_,z), candidate(_,z).
 
 
+/**
+*   Returns the variables that are put in the sink.
+*/
 .decl to_check(  x: var) 
 //.output to_check(IO=stdout)
 to_check( x) :- sink( _ ,x), !first_sanitize(_,x).
@@ -87,13 +90,12 @@ changed_source_sink(x) :-source(l,x),
                              if(_,_,x,_);
                              if(_,_,_,x)
                             ).
-
-//This first sanitize is used for all those variables that 
-//are taken from source and used in the sink and never used again in
-//the code, as assignments or if conditions, therefore the only thing left
-//to do is to sanitize them after the source.
-//it would have been the same in the sink
-
+/**
+* This first sanitize is used for all those variables that
+* are taken from source and used in the sink and never used again in
+* the code, neither as assignments or conditions in ifs, therefore the only thing left
+* to do is to sanitize them right after the source.
+*/
 .decl first_sanitize(l1:label, x: var) 
 //.output first_sanitize(IO=stdout)
 first_sanitize(ld,x) :-   Next_line(l,ld),
@@ -113,7 +115,9 @@ if_else(i,e,j) :- if(i, _ ,x,y), if(e, _ ,x,y), join(j, l ,_), Next_line(l,e),
                 Next_line( l2,i),follows(e, l2).
 
 
-
+/**
+*   Find all the ifs above a variable belonging to "to_check"
+*/
 
 .decl find_possible_ifs_of_vars_to_check(l:label, j:label, v:var) #var v, in label l, that is inside if in label j,
 //.output find_possible_ifs_of_vars_to_check(IO=stdout)
@@ -130,6 +134,10 @@ find_possible_ifs_of_vars_to_check(l1,l,x ) :-
                 ord(substr(l1,1,strlen(l1)-1)) > ord(substr(e,1,strlen(e)-1)),
                 ord(substr(l1,1,strlen(l1)-1)) < ord(substr(j,1,strlen(j)-1)).
                 
+
+/**
+*   This is used to find the last if, that the variable to check belongs to. See next function.
+*/                
 .decl find_not_belonging_if_of_vars_to_check(l:label, j:label, v:var) //The variable var in label l belongs to the if in line j
 //.output find_not_belonging_if_of_vars_to_check(IO=stdout)
 
@@ -140,7 +148,9 @@ find_not_belonging_if_of_vars_to_check(l_var,l1_if,var) :-  find_possible_ifs_of
                                         ord(substr(l_var,1,strlen(l_var)-1)) > ord(substr(l2_if,1,strlen(l2_if)-1)).
 
 
-
+/**
+*   This finds the last if that the variable to check belongs to.
+*/ 
 .decl find_belonging_if_of_vars_to_check(l:label, j:label, v:var) //The variable var in label l belongs to the if in line j
 //.output find_belonging_if_of_vars_to_check(IO=stdout)
 
@@ -149,6 +159,10 @@ find_belonging_if_of_vars_to_check(l_var,l1_if,var) :-  find_possible_ifs_of_var
 
 
 
+/**
+*   Every variable "to_check" in many cases has assigned some values taken from source. And, if it is inside a if, it may also depend on the value of 
+*   the variable used in the if condition. Tis function finds all the dependencies  
+*/ 
 .decl find_dependencies_of_vars_to_check (l:label, v:var, d:var) //var v in label l, depends on var d
 .output find_dependencies_of_vars_to_check(IO=stdout)
 //Find dependencies that are due to the conditions on the if statemet
@@ -188,7 +202,9 @@ external_if (i1,e1, j1) :- if_else(i1,e1,j1), if_else(i2,_,j2),
             ord(substr(j2,1,strlen(j2)-1))<ord(substr(e1,1,strlen(e1)-1)).
 
 
-
+/**
+*   Returns the position (IF ELSE JOIN) of the most internal if statement, or the only one if there are no nested ifs.
+*/
 .decl internal_if(l:label, e:label, j:label )
 //.output internal_if(IO=stdout)
 internal_if (i1,e1, j1) :- if_else(i1,e1,j1), !external_if(i1,e1, j1).
@@ -196,8 +212,8 @@ internal_if (i1,e1, j1) :- if_else(i1,e1,j1), !external_if(i1,e1, j1).
 
 
 /**
-*   Return the conditional statements that contains candidates variables inside 
-*   both the if and and else body and has no nested IF
+*   Return the conditional statements that contains same dependency, possible for different variables, inside 
+*   both the if and else body and has no nested IF
 */
 .decl internal_if_both_dependency(l:label, e:label, j:label ,x:var)
 //.output internal_if_both_dependency(IO=stdout)
@@ -210,7 +226,10 @@ internal_if_both_dependency(i1,e1, j1, dep):- internal_if(i1,e1,j1),
                                             ord(substr(l2_var,1,strlen(l2_var)-1))>ord(substr(e1,1,strlen(e1)-1)),
                                             ord(substr(l2_var,1,strlen(l2_var)-1))<ord(substr(j1,1,strlen(j1)-1)).
 
-//Used to save where to the variable taken from the source is assigned something else.
+/**
+* Used when, we have a source, and an if-else, to that source is then assigned something else, for example ONLY IN THE IF. THerefore we will sanitize 
+* that source only in the else. MISLEADING: TODO: QUA HO SCRITTO SOLO CHE DEVE ESSSERCI UN ASSIGNMENT, IN REALTÀ DOVREI AGGIUNGERE CHE VAR È PURE SOURCE..
+*/
 .decl internal_if_both_source_assignment(l:label, e:label, j:label ,x:var)
 //.output internal_if_both_source_assignment(IO=stdout)
 internal_if_both_source_assignment(i1,e1, j1, var):- internal_if(i1,e1,j1),
