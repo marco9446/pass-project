@@ -218,11 +218,11 @@ internal_if (i1,e1, j1) :- if_else(i1,e1,j1), !external_if(i1,e1, j1).
 .decl internal_if_both_dependency(l:label, e:label, j:label ,x:var)
 //.output internal_if_both_dependency(IO=stdout)
 internal_if_both_dependency(i1,e1, j1, dep):- internal_if(i1,e1,j1),
-                                            find_dependencies_of_vars_to_check(l_var, var, dep),
+                                            find_dependencies_of_vars_to_check(l_var, _, dep),
                                             ord(substr(l_var,1,strlen(l_var)-1))>ord(substr(i1,1,strlen(i1)-1)),
                                             ord(substr(l_var,1,strlen(l_var)-1))<ord(substr(e1,1,strlen(e1)-1)),
                                             
-                                            find_dependencies_of_vars_to_check(l2_var, var1, dep),
+                                            find_dependencies_of_vars_to_check(l2_var, _, dep),
                                             ord(substr(l2_var,1,strlen(l2_var)-1))>ord(substr(e1,1,strlen(e1)-1)),
                                             ord(substr(l2_var,1,strlen(l2_var)-1))<ord(substr(j1,1,strlen(j1)-1)).
 
@@ -271,7 +271,7 @@ reachable(X,Y)  :-  reachable(X,Z), follows(Z,Y).
 
 .decl translate(x:number, i:label)
 //.output translate(IO=stdout)
-translate(x,i) :- Labels(i), x=ord(substr(i,1,strlen(i)-1))-ord("a").
+translate(ord(substr(i,1,strlen(i)-1))-ord("a"),i) :- Labels(i).
 
 
 //TODO: May be optimized to cover the cases when there are multiple loops, not nested but one after another.
