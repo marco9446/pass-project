@@ -1,12 +1,12 @@
 //L1:  x:=source();
 //L2:  y:=source();
 //L3:  z:=source();
-//L4: if(v>0){
-//L5:   u:=x+y;
-//L6: }
-//L7: else{
-//L8:   u:=z;
-//L9: }
+//L4:  if(v>0){
+//L5:    u:=x+y;
+//L6:  }
+//L7:  else{
+//L8:    u:=z;
+//L9:  }
 //L10: sink(u);
 
 source("l1","x").
