@@ -1,9 +1,9 @@
 //L1: x:=source();		
 //L2: if (z > 0){		
-//L3: y := z;
+//L3:   y := z;
 //L4: }
 //L5: else{		
-//L6: y:=x+z;
+//L6:   y := x+z;
 //L7: }
 //L8: sink(y);
 //L9: sink(z);		
