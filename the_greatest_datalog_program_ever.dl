@@ -37,18 +37,18 @@ Labels(l) :- follows(l,_).
 Labels(l) :- follows(_,l).
 
 
-// /**
-// *   The Numbers function strips the labes in order to optain only the number of
-// *   lines, ignoring the first character 
-// */
+/**
+*   The Numbers function strips the labes in order to optain only the number of
+*   lines, ignoring the first character 
+*/
 .decl Numbers(i:symbol )
 //.output Numbers(IO=stdout)
 Numbers( substr(x,1,strlen(x)-1) ) :- Labels(x), strlen(x) > 1.
  
 
-// /**
-// *   Returns al the lines y that are greater than line x
-// */
+/**
+*   Returns al the lines y that are greater than line x
+*/
 
 .decl Less(x:symbol, y:symbol)
 //.output Less(IO=stdout)
@@ -56,15 +56,15 @@ Less(x,y) :-Numbers(x), Numbers(y), ord(x) < ord(y).
 
 
 .decl Transitive(x:symbol, y:symbol) 
-// .output Transitive(IO=stdout)
+//.output Transitive(IO=stdout)
 Transitive(x,z) :-Less(x,y), Less(y,z). 
 
 
-// /**
-// *   Returns the line i with line i+1 (ex. l1  l2, l2  l3 ecc..)
-// */
+/**
+*   Returns the line i with line i+1 (ex. l1  l2, l2  l3 ecc..)
+*/
 .decl Next_line(i:symbol, j:symbol) // j after i
-// .output Next_line(IO=stdout)
+.output Next_line(IO=stdout)
 Next_line(cat("l", i),cat("l", j)) :-Less(i,j), !Transitive(i,j).
 
 
@@ -182,3 +182,33 @@ t3_smart(l, a) :-   sink(_, v),
                     !candidate(l2, _ ), 
                     candidate(l1,_ ), 
                     Next_line(l1, l).
+// In teoria il caso 1, copre i casi in cui sopra UN If-else c'è un assign, in realtà non funziona
+//bene per motivi ignoti.
+//Invece questo test copre i casi in cui sopra l'if non ci sono assignments.
+
+.decl T3(l:label, x:var)
+.output T3(IO=stdout)
+T3(lf,y) :- Next_line(l1,lf),
+            sink(_,y), smart_loop(i1,e1,j1), !assign(l,y,x,_),candidate(_,x), Labels(l),
+            ord(substr(l,1,strlen(l)-1)) > ord(substr(i1,1,strlen(i1)-1)),
+            ord(substr(l,1,strlen(l)-1)) < ord(substr(e1,1,strlen(e1)-1)),
+            assign(l1,y,x,_),
+            ord(substr(l1,1,strlen(l1)-1)) > ord(substr(e1,1,strlen(e1)-1)),
+            ord(substr(l1,1,strlen(l1)-1)) < ord(substr(j1,1,strlen(j1)-1)).
+            
+T3(lf,y) :- Next_line(l1,lf),
+            sink(_,y), smart_loop(i1,e1,j1), assign(l,y,x,_),candidate(_,x), Labels(l),
+            ord(substr(l,1,strlen(l)-1)) > ord(substr(i1,1,strlen(i1)-1)),
+            ord(substr(l,1,strlen(l)-1)) < ord(substr(e1,1,strlen(e1)-1)),
+            !assign(l1,y,x,_),Labels(l1),
+            ord(substr(l1,1,strlen(l1)-1)) > ord(substr(e1,1,strlen(e1)-1)),
+            ord(substr(l1,1,strlen(l1)-1)) < ord(substr(j1,1,strlen(j1)-1)).
+
+.decl T4(l:label, x:var)
+.output T4(IO=stdout)
+
+//T4(l,x) :- sink(l,x) ,sink(l1,y), (assign(_,x,y,_) ; (assign(_,x,_,y))).
+T4(ld,x) :- sink(_,x), source(l,x), !assign(l1,x,_,_), Labels(l1), Next_line(l,ld). 
+
+// .decl T5(l:label, x:var)
+// .output T5(IO=stdout)
