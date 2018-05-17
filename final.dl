@@ -167,37 +167,105 @@ find_belonging_if_of_vars_to_check(l_var,l1_if,var) :-
                     !find_not_belonging_if_of_vars_to_check(l_var,l1_if,var).
 
 
+.decl var_with_double_candidate_on_right(v:var)
+.output var_with_double_candidate_on_right(IO=stdout)
+
+var_with_double_candidate_on_right(v) :- assign(_,v,a,b), candidate(_,a), candidate(_,b).
+                
+
 /**
 *   Every variable "to_check" in many cases has assigned some values taken from 
 *   source. And, if it is inside a if, it may also depend on the value of 
 *   the variable used in the if condition. Tis function finds all the dependencies  
 */ 
 //var v in label l, depends on var d
-.decl find_dependencies_of_vars_to_check (l:label, v:var, d:var) 
-// .output find_dependencies_of_vars_to_check(IO=stdout)
+.decl find_dependencies_of_vars_to_check (l:label, v:var, d:var, s:symbol) //symbol stays for left or right 
+.output find_dependencies_of_vars_to_check(IO=stdout)
+
 //Find dependencies that are due to the conditions on the if statemet
-find_dependencies_of_vars_to_check(l,v,d) :- 
+find_dependencies_of_vars_to_check(l,v,d,s) :- 
                 find_possible_ifs_of_vars_to_check(l,l_if,v), 
                 (if(l_if,_,d,_);if(l_if,_,_,d)), 
                 ord(substr(l_if,1,strlen(l_if)-1)) < ord(substr(l,1,strlen(l)-1)),
-                candidate(_,d).
+                candidate(_,d),
+                s="right",
+                !var_with_double_candidate_on_right(v).
 
 
-//Find dependencies due to assignments in the if-else.
-find_dependencies_of_vars_to_check(l,v,a) :-    
+/*Find dependencies due to assignments in the if-else.
+*In particular: If there are two candidates in the right hand side, then create the dependency in the left
+*BUT if one of this variable is in the sink then put the right hand side.
+*/
+
+find_dependencies_of_vars_to_check(l,v,a,s) :-    
+            //Given, a var to chech, and the belonging if...
             find_belonging_if_of_vars_to_check(l,l_if,v),
-            (assign(l,v,a,_) ; assign(l,v,_,a)), candidate(l2,a),
+            //If there is an assignment v=a+b in l, where a is a candidate but b IS NOT. Oss. a has to be a candidate
+            //In one of the previos lines.
+            ( (assign(l,v,a,b) , !candidate(_,b)) ; ( assign(l,v,b,a), !candidate(_,b))), candidate(l2,a),
             ord(substr(l2,1,strlen(l2)-1)) < ord(substr(l,1,strlen(l)-1)),
+            //then take an if_else_join, such that the assign is inside if-else
             if_else(if1,else1,_), l_if=if1,
             ord(substr(l,1,strlen(l)-1)) > ord(substr(if1,1,strlen(if1)-1)),
-            ord(substr(l,1,strlen(l)-1)) < ord(substr(else1,1,strlen(else1)-1)).
-find_dependencies_of_vars_to_check(l,v,a) :-    
+            ord(substr(l,1,strlen(l)-1)) < ord(substr(else1,1,strlen(else1)-1)),
+            s="right",
+            !var_with_double_candidate_on_right(v).
+
+//Same thing but in the else
+find_dependencies_of_vars_to_check(l,v,a,s) :-    
             find_belonging_if_of_vars_to_check(l,l_if,v),
-            (assign(l,v,a,_) ; assign(l,v,_,a)), candidate(l2,a),
+            ( (assign(l,v,a,b) , !candidate(_,b)) ; ( assign(l,v,b,a), !candidate(_,b))), candidate(l2,a),
             ord(substr(l2,1,strlen(l2)-1)) < ord(substr(l,1,strlen(l)-1)),
             if_else(_,else1,join1), l_if=if1,
             ord(substr(l,1,strlen(l)-1)) > ord(substr(else1,1,strlen(else1)-1)),
-            ord(substr(l,1,strlen(l)-1)) < ord(substr(join1,1,strlen(join1)-1)).
+            ord(substr(l,1,strlen(l)-1)) < ord(substr(join1,1,strlen(join1)-1)),
+            s="right",
+            !var_with_double_candidate_on_right(v).
+
+//Indeed, if I have v =a+b, where a and b are both candidates BUT NOT IN THE SINK, then I do it on the left variable
+//For the if
+find_dependencies_of_vars_to_check(l,v,v,s) :-
+            find_belonging_if_of_vars_to_check(l,l_if,v),
+            assign(l,v,a,b), candidate(l2,a), candidate(l3,b),
+            ord(substr(l2,1,strlen(l2)-1)) < ord(substr(l,1,strlen(l)-1)),
+            ord(substr(l3,1,strlen(l3)-1)) < ord(substr(l,1,strlen(l)-1)),
+            if_else(if1,else1,join1), l_if=if1,
+            ord(substr(l,1,strlen(l)-1)) > ord(substr(if1,1,strlen(if1)-1)),
+            ord(substr(l,1,strlen(l)-1)) < ord(substr(else1,1,strlen(else1)-1)),
+            !sink(_,b), !sink(_,a),
+            s="left".
+//For the else
+find_dependencies_of_vars_to_check(l,v,v,s) :-
+            find_belonging_if_of_vars_to_check(l,l_if,v),
+            assign(l,v,a,b), candidate(l2,a), candidate(l3,b),
+            ord(substr(l2,1,strlen(l2)-1)) < ord(substr(l,1,strlen(l)-1)),
+            ord(substr(l3,1,strlen(l3)-1)) < ord(substr(l,1,strlen(l)-1)),
+            if_else(_,else1,join1), l_if=if1,
+            ord(substr(l,1,strlen(l)-1)) > ord(substr(else1,1,strlen(else1)-1)),
+            ord(substr(l,1,strlen(l)-1)) < ord(substr(join1,1,strlen(join1)-1)),
+            !sink(_,b), !sink(_,a),
+            s="left".
+
+//WHEN v IS A VAR WITH DOUBLE CANDIDATE ON RIGHT
+find_dependencies_of_vars_to_check(l,v,v,s) :-
+            find_belonging_if_of_vars_to_check(l,l_if,v),
+            assign(l,v,a,_), candidate(l2,a),
+            ord(substr(l2,1,strlen(l2)-1)) < ord(substr(l,1,strlen(l)-1)),
+            if_else(if1,else1,join1), l_if=if1,
+            ord(substr(l,1,strlen(l)-1)) > ord(substr(if1,1,strlen(if1)-1)),
+            ord(substr(l,1,strlen(l)-1)) < ord(substr(else1,1,strlen(else1)-1)),
+            !sink(_,a), var_with_double_candidate_on_right(v),
+            s="left".
+//For the else
+find_dependencies_of_vars_to_check(l,v,v,s) :-
+            find_belonging_if_of_vars_to_check(l,l_if,v),
+            assign(l,v,a,_), candidate(l2,a),
+            ord(substr(l2,1,strlen(l2)-1)) < ord(substr(l,1,strlen(l)-1)),
+            if_else(_,else1,join1), l_if=if1,
+            ord(substr(l,1,strlen(l)-1)) > ord(substr(else1,1,strlen(else1)-1)),
+            ord(substr(l,1,strlen(l)-1)) < ord(substr(join1,1,strlen(join1)-1)),
+            !sink(_,a),var_with_double_candidate_on_right(v),
+            s="left".
 
 
 /**
@@ -227,10 +295,10 @@ internal_if (i1,e1, j1) :- if_else(i1,e1,j1), !external_if(i1,e1, j1).
 .decl internal_if_both_dependency(l:label, e:label, j:label ,x:var)
 //.output internal_if_both_dependency(IO=stdout)
 internal_if_both_dependency(i1,e1, j1, dep):- internal_if(i1,e1,j1),
-            find_dependencies_of_vars_to_check(l_var, _, dep),
+            find_dependencies_of_vars_to_check(l_var, _, dep,_),
             ord(substr(l_var,1,strlen(l_var)-1))>ord(substr(i1,1,strlen(i1)-1)),
             ord(substr(l_var,1,strlen(l_var)-1))<ord(substr(e1,1,strlen(e1)-1)),                                          
-            find_dependencies_of_vars_to_check(l2_var, _, dep),
+            find_dependencies_of_vars_to_check(l2_var, _, dep,_),
             ord(substr(l2_var,1,strlen(l2_var)-1))>ord(substr(e1,1,strlen(e1)-1)),
             ord(substr(l2_var,1,strlen(l2_var)-1))<ord(substr(j1,1,strlen(j1)-1)).
 
@@ -310,14 +378,45 @@ no_nested_if(i1,e1,j1) :- if_else(i1,e1,j1), !nested_if(i1,e1,j1).
 *       e.g. x, then do the sanitize outside the if, before the if-else.
 */
 .decl second_sanitize(l:label , x:var)
-// .output second_sanitize(IO=stdout)
+.output second_sanitize(IO=stdout)
 //If the variable "dep" is a dependency in both if and else
-second_sanitize(i1,dep) :-  no_nested_if(i1,e1,j1), 
-                            internal_if_both_dependency(i1,e1,j1,dep).
-//If is in only one of them BUT THAT DEP IS NOT IN THE SINK, then do it there. 
-second_sanitize(ls,dep) :- no_nested_if(i1,e1,j1), 
+
+//WHEN WE TOOK THE DEPENDY ON THE LEFT, WE HAVE TO SANITIZE IT AT THE END, IN THE JOIN, NOT IN THE IF.
+//If the variable "dep" is a dependency in both if and else
+second_sanitize(j1,dep) :-  no_nested_if(i1,e1,j1), 
+                            internal_if_both_dependency(i1,e1,j1,dep),
+                            find_dependencies_of_vars_to_check(_,_,dep,s),
+                            s="left".
+
+
+// IF IT IS IN ONE OF THEM, DO IT THERE.
+second_sanitize(ls,dep) :- no_nested_if(i1,e1,j1), Next_line(l,ls),
                 !internal_if_both_dependency(i1,e1,j1,dep),
-                find_dependencies_of_vars_to_check(l,var,dep),
+                find_dependencies_of_vars_to_check(l,var,dep,s),
+                ( 
+                    (ord(substr(l,1,strlen(l)-1))>ord(substr(i1,1,strlen(i1)-1)),
+                    ord(substr(l,1,strlen(l)-1))<ord(substr(e1,1,strlen(e1)-1))
+                    );
+                    (ord(substr(l,1,strlen(l)-1))>ord(substr(e1,1,strlen(e1)-1)),
+                    ord(substr(l,1,strlen(l)-1))<ord(substr(j1,1,strlen(j1)-1))
+                    )
+                ),
+                s="left".
+
+
+.decl second_bis_sanitize(l:label , x:var)
+.output second_bis_sanitize(IO=stdout)
+
+second_bis_sanitize(i1,dep) :- c = count:{second_sanitize(_,_)}, c=0,
+                            no_nested_if(i1,e1,j1), 
+                            internal_if_both_dependency(i1,e1,j1,dep),
+                            find_dependencies_of_vars_to_check(_,_,dep,s),
+                            s="right".
+//If is in only one of them BUT THAT DEP IS NOT IN THE SINK, then do it there. 
+second_bis_sanitize(ls,dep) :- c = count:{second_sanitize(_,_)}, c=0, 
+                no_nested_if(i1,e1,j1), 
+                !internal_if_both_dependency(i1,e1,j1,dep),
+                find_dependencies_of_vars_to_check(l,var,dep,s),
                 ( 
                     (ord(substr(l,1,strlen(l)-1))>ord(substr(i1,1,strlen(i1)-1)),
                     ord(substr(l,1,strlen(l)-1))<ord(substr(e1,1,strlen(e1)-1))
@@ -328,11 +427,13 @@ second_sanitize(ls,dep) :- no_nested_if(i1,e1,j1),
                 ), 
                 find_belonging_if_of_vars_to_check(l,l_if,var), 
                 Next_line(l_if,ls),
+                s="right",
                 !sink(_,dep).
 //OTHERWISE, IF IT IS IN ONE OF THEM BUT ALSO IN THE SINK, THEN DO IT OUTSIDE.
-second_sanitize(i1,dep) :- no_nested_if(i1,e1,j1), 
+second_bis_sanitize(i1,dep) :- c = count:{second_sanitize(_,_)}, c=0, 
+                no_nested_if(i1,e1,j1), 
                 !internal_if_both_dependency(i1,e1,j1,dep),
-                find_dependencies_of_vars_to_check(l,var,dep),
+                find_dependencies_of_vars_to_check(l,var,dep,s),
                 ( 
                     (ord(substr(l,1,strlen(l)-1))>ord(substr(i1,1,strlen(i1)-1)),
                     ord(substr(l,1,strlen(l)-1))<ord(substr(e1,1,strlen(e1)-1))
@@ -340,7 +441,8 @@ second_sanitize(i1,dep) :- no_nested_if(i1,e1,j1),
                     (ord(substr(l,1,strlen(l)-1))>ord(substr(e1,1,strlen(e1)-1)),
                     ord(substr(l,1,strlen(l)-1))<ord(substr(j1,1,strlen(j1)-1))
                     )
-                ), sink(_,dep).
+                ), sink(_,dep),
+                s="right".
 
 
 /**
@@ -376,6 +478,8 @@ third_sanitize(i2,x) :- no_nested_if(i1,e1,j1),
 .output final_sanitize(IO=stdout)
 final_sanitize(l,x) :- first_sanitize(l,x).
 final_sanitize(l,x) :- second_sanitize(l,x).
+final_sanitize(l,x) :- second_bis_sanitize(l,x).
+final_sanitize(l,x) :- third_sanitize(l,x).
 
 
 //TODO: QUANDO METTI LE DEPENDENCIES PUOI , IN QUELLI CHE VENGONO SETTATI COME COSTANTI, SOLO
