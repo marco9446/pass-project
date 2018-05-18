@@ -23,7 +23,7 @@ reachable(X,Y)  :-  follows(X,Y).
 reachable(X,Y)  :-  reachable(X,Z), follows(Z,Y).
 
 .decl if_paths(l:label, j:label)
-.output if_paths(IO=stdout)
+//.output if_paths(IO=stdout)
 if_paths(l,j) :- join(l,j,_).
 if_paths(l,j) :- if_paths(l,x), reachable(x,j).
 
@@ -33,7 +33,7 @@ else_paths(l,j) :- join(l,_,j).
 else_paths(l,j) :- else_paths(l,x), reachable(x,j).
 
 .decl candidate( l:label, x: var) 
-.output candidate(IO=stdout)
+//.output candidate(IO=stdout)
 candidate(l, x) :- source( l ,x).
 candidate(l, x) :- assign(l,x,y,_), candidate(_,y).
 candidate(l, y) :- assign(l,_,y,_), candidate(_,y).
@@ -42,20 +42,20 @@ candidate(l, z) :- assign(l,_,_,z), candidate(_,z).
 candidate(l, x) :- ( if(l,_,x,_);if(l,_,_,x)), candidate(_,x).
 
 
-.decl if_else_finder(i:label, e:label, j:label)
+.decl if_else_finder(i:label, e:label, j:label) 
 .output if_else_finder(IO=stdout)
-if_else_finder(i,e,j) :- if(i, _,x,y), if(e,_,x,y), join(j, ij, ej),
-                            !follows(e,ij),
-                            follows(j,ej),
-                            i != e,
-                            reachable(i1,i),
-                            reachable(ej,e),
-                            follows(i,l2), follows(e,l2).
+if_else_finder(i,e,j) :- if(i, _ ,x,y), if(e, _ ,x,y), join(j, ij ,ej), 
+                !follows(e, ij), 
+                follows(j, ej), 
+                i != e, 
+                reachable(ij, i), 
+                reachable(ej, e),
+                follows(i, l2), follows(e, l2).
 
 
 .decl left_flag(l:symbol)
 .output left_flag(IO=stdout)
-left_flag(flag) :- flag="left", assign(_,v,a,b), candidate(_,a), candidate(_,b), !sink(_,a), !sink(_,b).
+left_flag(flag) :- flag="left", assign(_,_,a,b), candidate(_,a), candidate(_,b), !sink(_,a), !sink(_,b).
 // left_right(flag) :- flag="right", assign(_,v,a,b), candidate(_,a), candidate(_,b), sink(_,a), sink(_,b).
 // left_right(flag) :- flag="right", assign(_,v,a,b), 
 //                     (( candidate(_,a), !candidate(_,b));(( !candidate(_,a), candidate(_,b)))
@@ -63,46 +63,80 @@ left_flag(flag) :- flag="left", assign(_,v,a,b), candidate(_,a), candidate(_,b),
 
 .decl right_flag(l:symbol)
 .output right_flag(IO=stdout)
-right_flag(flag) :- flag="right", c = count:{left_flag(l)}, c<1.
+right_flag(flag) :- flag="right", c = count:{left_flag(_)}, c<1.
 
 
 
+.decl to_check(  x: var) 
+.output to_check(IO=stdout)
+to_check( x) :- sink( _ ,x).
 
 
 /*  Given a if-else-join in label i, 
 *   given a variable v in label l, that belongs to 
 *   the path of that if-else, it finds a dependency d
 */ 
-.decl dependencies_if(i:label, l:label, v:var, d:var) 
+.decl dependencies_if(i:label, l:label, v:var, d:var ) 
 .output dependencies_if(IO=stdout)
 
-dependencies_if(if_label,j,v,d) :-   if_paths(join_label, j), 
+/* THESE TWO DEPENDENCIES ARE MADE IN CASE WE TAKE THE RIGHT HAND SIDE DEPENDENCIES */
+
+/*  Create a dependency: variable v in label j, appartenente all'if-else in label if_label, 
+*   Presi tutti i label del path di quell'if, essendoci un assign di candidates dentro l'if-else, 
+    Tale che i candidates non sono sources e la variabile v è in un sink.
+*/
+dependencies_if(if_label,j,v,d ) :-   if_paths(join_label, j), 
                                     if_else_finder(if_label, _, join_label),
                                     ( assign(j,v,d,_); assign(j,v,_,d) ), 
-                                    candidate(l,d), l=j,
-                                    sink(_,v), !source(l,d).
+                                    candidate(l,d), reachable(j,l),
+                                    sink(_,v), c = count:{left_flag(_)}, c<1.
 
-dependencies_if(if_label,j,v,d) :-  if_paths(join_label, j),
+/* Crea la dependency di x da se stessa, nel caso x sia source e sink e non venga cambiata*/
+dependencies_if(if_label,j,v,d ) :-   if_paths(join_label, j), 
                                     if_else_finder(if_label, _, join_label),
-                                    if_paths(join_label, l),
+                                    ( assign(j,v,d,_); assign(j,v,_,d) ), 
+                                    candidate(l,d), reachable(j,l),
+                                    source(_,v), sink(_,v), c = count:{left_flag(_)}, c<1.
+
+/* Crea la dependency delle variabili nell'if
+*/
+dependencies_if(if_label,j,v,d ) :-  if_paths(join_label, j),
+                                    if_else_finder(if_label, _, join_label),
+                                    if_paths(join_label, l), ( if(l,_,d,_);if(l,_,_,d)), 
                                     assign(j,v,_,_), candidate(l,d),  v!=d,
-                                    sink(_,v), !source(l,d).
+                                    sink(_,v), c = count:{left_flag(_)}, c<1.
+
+/* THESE DEPENDENCY IS MADE IN CASE WE TAKE THE LEFT HAND SIDE DEPENDENCIES */
+dependencies_if(if_label,j,v,v ) :-   if_paths(join_label, j), 
+                                    if_else_finder(if_label, _, join_label),
+                                    ( assign(j,v,d,_); assign(j,v,_,d) ), 
+                                    candidate(l,d), reachable(j,l),
+                                    sink(_,v), c = count:{left_flag(_)}, c>0.
 
 
-
-.decl dependencies_else(i:label, l:label, v:var, d:var)  //variable v in label l, depends on d.
+.decl dependencies_else(i:label, l:label, v:var, d:var )  //variable v in label l, depends on d.
 .output dependencies_else(IO=stdout)
-dependencies_else(else_label,j,v,d) :-  else_paths(join_label, j),
+
+/* THESE TWO DEPENDENCIES ARE MADE IN CASE WE TAKE THE RIGHT HAND SIDE DEPENDENCIES */
+
+dependencies_else(else_label,j,v,d ) :-  else_paths(join_label, j),
                                         if_else_finder(_, else_label, join_label),
                                         ( assign(j,v,d,_); assign(j,v,_,d) ),
-                                        candidate(l,d), l=j,
-                                        sink(_,v), !source(l,d).
+                                        candidate(l,d), reachable(j,l),
+                                        sink(_,v),c = count:{left_flag(_)}, c<1.
 
-dependencies_else(else_label,j,v,d) :-  else_paths(join_label, j),
+dependencies_else(else_label,j,v,d ) :-  else_paths(join_label, j),
                                         if_else_finder(_, else_label, join_label),
-                                        else_paths(join_label, l),
+                                        else_paths(join_label, l),( if(l,_,d,_);if(l,_,_,d)), 
                                         assign(j,v,_,_), candidate(l,d),  v!=d,
-                                        sink(_,v), !source(l,d).
+                                        sink(_,v), c = count:{left_flag(_)}, c<1.
 
+/* THESE DEPENDENCY IS MADE IN CASE WE TAKE THE LEFT HAND SIDE DEPENDENCIES */
+
+dependencies_else(else_label,j,v,v ) :-  else_paths(join_label, j),
+                                        if_else_finder(_, else_label, join_label),
+                                        ( assign(j,v,d,_); assign(j,v,_,d) ),
+                                        candidate(l,d), reachable(j,l),
+                                        sink(_,v),c = count:{left_flag(_)}, c>0.
 
 

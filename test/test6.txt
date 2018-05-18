@@ -45,7 +45,7 @@ follows("l16","l15").
 follows("l17","l16").
 
 
-join("l15","l9","l4").
+join("l15","l9","l14").
 
 assign("l6","u","x","y").
 assign("l7","v","0","0").
