@@ -71,6 +71,34 @@ right_flag(flag) :- flag="right", c = count:{left_flag(_)}, c<1.
 .output to_check(IO=stdout)
 to_check( x) :- sink( _ ,x).
 
+/* Given a source v, that is present also in a sink, the following function finds if there is a path
+realted to the if_label (i) where this variable v is assigned to something else (label l).
+*/
+.decl source_sink_assigned_in_a_path(i:label, l:label, v:var)
+.output source_sink_assigned_in_a_path(IO=stdout)
+
+source_sink_assigned_in_a_path(if_label,j,v ) :- source(_,v), sink(_,v), if_paths(join_label, j),
+                                        if_else_finder(if_label, _, join_label),
+                                        ( assign(j,v,d,_); assign(j,v,_,d) ).
+source_sink_assigned_in_a_path(else_label,j,v ) :- source(_,v), sink(_,v), else_paths(join_label, j),
+                                        if_else_finder(_,else_label , join_label),
+                                        ( assign(j,v,d,_); assign(j,v,_,d) ).
+
+
+/* Given a source v, that is present also in a sink, the following function finds all those paths
+where the variable is NOT assigned, will later be used to set the dependency to itself in the label
+following the if, label l.
+*/
+.decl source_sink_NOT_assigned_in_a_path(i:label, l:label, v:var)
+.output source_sink_NOT_assigned_in_a_path(IO=stdout)
+
+source_sink_NOT_assigned_in_a_path(if_label, l, v) :- source(_,v), sink(_,v), if(if_label,l,_,_),
+                                        if_else_finder(if_label, _, join_label),
+                                        !source_sink_assigned_in_a_path(if_label,_,v).
+
+source_sink_NOT_assigned_in_a_path(else_label, l, v) :- source(_,v), sink(_,v), if(else_label,l,_,_),
+                                        if_else_finder(_,else_label, join_label),
+                                        !source_sink_assigned_in_a_path(else_label,_,v).
 
 /*  Given a if-else-join in label i, 
 *   given a variable v in label l, that belongs to 
@@ -92,12 +120,13 @@ dependencies_if(if_label,j,v,d ) :-   if_paths(join_label, j),
                                     sink(_,v), c = count:{left_flag(_)}, c<1.
 
 /* Crea la dependency di x da se stessa, nel caso x sia source e sink e non venga cambiata*/
-dependencies_if(if_label,j,v,d ) :-   if_paths(join_label, j), 
-                                    if_else_finder(if_label, _, join_label),
-                                    ( assign(j,v,d,_); assign(j,v,_,d) ), 
-                                    candidate(l,d), reachable(j,l),
-                                    source(_,v), sink(_,v), c = count:{left_flag(_)}, c<1.
-
+/*  Se c'è una variabile che è sia in source che in sink, metti la dipendenza
+    da se stessa nell if_path.
+*/
+dependencies_if(if_label,j,v,v ) :- source_sink_NOT_assigned_in_a_path(if_label, j, v),
+                                    if_paths(join_label, j), 
+                                    if_else_finder(if_label, _, join_label).
+                                    
 /* Crea la dependency delle variabili nell'if
 */
 dependencies_if(if_label,j,v,d ) :-  if_paths(join_label, j),
@@ -131,6 +160,14 @@ dependencies_else(else_label,j,v,d ) :-  else_paths(join_label, j),
                                         assign(j,v,_,_), candidate(l,d),  v!=d,
                                         sink(_,v), c = count:{left_flag(_)}, c<1.
 
+/* Crea la dependency di x da se stessa, nel caso x sia source e sink e non venga cambiata*/
+/*  Se c'è una variabile che è sia in source che in sink, metti la dipendenza
+    da se stessa nell else_path.
+*/
+dependencies_else(else_label,j,v,v ) :- source_sink_NOT_assigned_in_a_path(else_label, j, v),
+                                    else_paths(join_label, j), 
+                                    if_else_finder(_, else_label,  join_label).
+           
 /* THESE DEPENDENCY IS MADE IN CASE WE TAKE THE LEFT HAND SIDE DEPENDENCIES */
 
 dependencies_else(else_label,j,v,v ) :-  else_paths(join_label, j),
