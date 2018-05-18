@@ -80,13 +80,13 @@ dependencies_if(if_label,j,v,d) :-   if_paths(join_label, j),
                                     if_else_finder(if_label, _, join_label),
                                     ( assign(j,v,d,_); assign(j,v,_,d) ), 
                                     candidate(l,d), l=j,
-                                    sink(_,v).
+                                    sink(_,v), !source(l,d).
 
 dependencies_if(if_label,j,v,d) :-  if_paths(join_label, j),
                                     if_else_finder(if_label, _, join_label),
                                     if_paths(join_label, l),
                                     assign(j,v,_,_), candidate(l,d),  v!=d,
-                                    sink(_,v).
+                                    sink(_,v), !source(l,d).
 
 
 
@@ -96,13 +96,13 @@ dependencies_else(else_label,j,v,d) :-  else_paths(join_label, j),
                                         if_else_finder(_, else_label, join_label),
                                         ( assign(j,v,d,_); assign(j,v,_,d) ),
                                         candidate(l,d), l=j,
-                                        sink(_,v).
+                                        sink(_,v), !source(l,d).
 
 dependencies_else(else_label,j,v,d) :-  else_paths(join_label, j),
                                         if_else_finder(_, else_label, join_label),
                                         else_paths(join_label, l),
                                         assign(j,v,_,_), candidate(l,d),  v!=d,
-                                        sink(_,v).
+                                        sink(_,v), !source(l,d).
 
 
 
