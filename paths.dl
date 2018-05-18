@@ -42,6 +42,17 @@ candidate(l, z) :- assign(l,_,_,z), candidate(_,z).
 candidate(l, x) :- ( if(l,_,x,_);if(l,_,_,x)), candidate(_,x).
 
 
+.decl if_else_finder(i:label, e:label, j:label)
+.output if_else_finder(IO=stdout)
+if_else_finder(i,e,j) :- if(i, _,x,y), if(e,_,x,y), join(j, ij, ej),
+                            !follows(e,ij),
+                            follows(j,ej),
+                            i != e,
+                            reachable(i1,i),
+                            reachable(ej,e),
+                            follows(i,l2), follows(e,l2).
+
+
 .decl left_flag(l:symbol)
 .output left_flag(IO=stdout)
 left_flag(flag) :- flag="left", assign(_,v,a,b), candidate(_,a), candidate(_,b), !sink(_,a), !sink(_,b).
@@ -54,19 +65,44 @@ left_flag(flag) :- flag="left", assign(_,v,a,b), candidate(_,a), candidate(_,b),
 .output right_flag(IO=stdout)
 right_flag(flag) :- flag="right", c = count:{left_flag(l)}, c<1.
 
-.decl dependencies_if(l:label, v:var, d:var) //variable v in label l, depends on d.
-.output dependencies_if(IO=stdout)
-dependencies_if(j,v,d) :-   if_paths(join_label, j),
-                            ( assign(j,v,d,_); assign(j,v,_,d) ), candidate(l,d), l=j.
-dependencies_if(j,v,d) :-   if_paths(join_label, j),if_paths(join_label, l),
-                            assign(j,v,_,_), candidate(l,d),  v!=d.
 
-.decl dependencies_else(l:label, v:var, d:var) //variable v in label l, depends on d.
+
+
+
+/*  Given a if-else-join in label i, 
+*   given a variable v in label l, that belongs to 
+*   the path of that if-else, it finds a dependency d
+*/ 
+.decl dependencies_if(i:label, l:label, v:var, d:var) 
+.output dependencies_if(IO=stdout)
+
+dependencies_if(if_label,j,v,d) :-   if_paths(join_label, j), 
+                                    if_else_finder(if_label, _, join_label),
+                                    ( assign(j,v,d,_); assign(j,v,_,d) ), 
+                                    candidate(l,d), l=j,
+                                    sink(_,v).
+
+dependencies_if(if_label,j,v,d) :-  if_paths(join_label, j),
+                                    if_else_finder(if_label, _, join_label),
+                                    if_paths(join_label, l),
+                                    assign(j,v,_,_), candidate(l,d),  v!=d,
+                                    sink(_,v).
+
+
+
+.decl dependencies_else(i:label, l:label, v:var, d:var)  //variable v in label l, depends on d.
 .output dependencies_else(IO=stdout)
-dependencies_else(j,v,d) :- else_paths(join_label, j),
-                            ( assign(j,v,d,_); assign(j,v,_,d) ), candidate(l,d), l=j.
-dependencies_else(j,v,d) :-   else_paths(join_label, j),if_paths(join_label, l),
-                            assign(j,v,_,_), candidate(l,d), v!=d.
+dependencies_else(else_label,j,v,d) :-  else_paths(join_label, j),
+                                        if_else_finder(_, else_label, join_label),
+                                        ( assign(j,v,d,_); assign(j,v,_,d) ),
+                                        candidate(l,d), l=j,
+                                        sink(_,v).
+
+dependencies_else(else_label,j,v,d) :-  else_paths(join_label, j),
+                                        if_else_finder(_, else_label, join_label),
+                                        else_paths(join_label, l),
+                                        assign(j,v,_,_), candidate(l,d),  v!=d,
+                                        sink(_,v).
 
 
 
