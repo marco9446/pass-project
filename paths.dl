@@ -1,0 +1,72 @@
+.type label
+.type var
+.type opc = [x:number,c:number]
+.type opv = [x:number,y:number]
+//.type expr //= number | var | opc | opv
+//.type cond //= [e:expr,constyp:number]// assume 1 for <, 2 for <= and 3 
+// for ==, 4 for >= and 5 for >
+
+// -- inputs --
+.decl source( l:label, x:var )
+.decl sink( l:label, x:var ) 
+.decl follows( l1:label, l2:label) 
+
+.decl join(l1: label, l2: label, l3:label) 
+.decl assign( l:label, x:var, y:var, z:var ) 
+.decl if(l1:label, l2:label, x:var, y:var)
+
+
+
+.decl reachable(l:label, j:label)
+//.output reachable(IO=stdout)
+reachable(X,Y)  :-  follows(X,Y).
+reachable(X,Y)  :-  reachable(X,Z), follows(Z,Y).
+
+.decl if_paths(l:label, j:label)
+.output if_paths(IO=stdout)
+if_paths(l,j) :- join(l,j,_).
+if_paths(l,j) :- if_paths(l,x), reachable(x,j).
+
+.decl else_paths(l:label, j:label)
+//.output else_paths(IO=stdout)
+else_paths(l,j) :- join(l,_,j).
+else_paths(l,j) :- else_paths(l,x), reachable(x,j).
+
+.decl candidate( l:label, x: var) 
+.output candidate(IO=stdout)
+candidate(l, x) :- source( l ,x).
+candidate(l, x) :- assign(l,x,y,_), candidate(_,y).
+candidate(l, y) :- assign(l,_,y,_), candidate(_,y).
+candidate(l, x) :- assign(l,x,_,z), candidate(_,z).
+candidate(l, z) :- assign(l,_,_,z), candidate(_,z).
+candidate(l, x) :- ( if(l,_,x,_);if(l,_,_,x)), candidate(_,x).
+
+
+.decl left_flag(l:symbol)
+.output left_flag(IO=stdout)
+left_flag(flag) :- flag="left", assign(_,v,a,b), candidate(_,a), candidate(_,b), !sink(_,a), !sink(_,b).
+// left_right(flag) :- flag="right", assign(_,v,a,b), candidate(_,a), candidate(_,b), sink(_,a), sink(_,b).
+// left_right(flag) :- flag="right", assign(_,v,a,b), 
+//                     (( candidate(_,a), !candidate(_,b));(( !candidate(_,a), candidate(_,b)))
+//                     ).
+
+.decl right_flag(l:symbol)
+.output right_flag(IO=stdout)
+right_flag(flag) :- flag="right", c = count:{left_flag(l)}, c<1.
+
+.decl dependencies_if(l:label, v:var, d:var) //variable v in label l, depends on d.
+.output dependencies_if(IO=stdout)
+dependencies_if(j,v,d) :-   if_paths(join_label, j),
+                            ( assign(j,v,d,_); assign(j,v,_,d) ), candidate(l,d), l=j.
+dependencies_if(j,v,d) :-   if_paths(join_label, j),if_paths(join_label, l),
+                            assign(j,v,_,_), candidate(l,d),  v!=d.
+
+.decl dependencies_else(l:label, v:var, d:var) //variable v in label l, depends on d.
+.output dependencies_else(IO=stdout)
+dependencies_else(j,v,d) :- else_paths(join_label, j),
+                            ( assign(j,v,d,_); assign(j,v,_,d) ), candidate(l,d), l=j.
+dependencies_else(j,v,d) :-   else_paths(join_label, j),if_paths(join_label, l),
+                            assign(j,v,_,_), candidate(l,d), v!=d.
+
+
+

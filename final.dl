@@ -23,9 +23,10 @@
 *   The Labels function return the labels that indicates each lines 
 *   (ex. l1, l2 ...)
 */
-.decl Labels(i:label )
+
+.decl Labels(i:label)
 //.output Labels(IO=stdout)
-Labels(l) :- source(l,_).
+Labels(l ) :- source(l,_).
 Labels(l) :- follows(l,_).
 Labels(l) :- follows(_,l).
 
@@ -38,6 +39,7 @@ Labels(l) :- follows(_,l).
 //.output Numbers(IO=stdout)
 Numbers( substr(x,1,strlen(x)-1) ) :- Labels(x), strlen(x) > 1.
  
+
 
 /**
 *   Returns al the lines y that are greater than line x
