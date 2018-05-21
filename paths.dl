@@ -416,25 +416,77 @@ successive_if(i0,i2) :- if(i0,_,_,_), !if(i1,_,_,_), if(i2,_,_,_), reachable(i2,
 
 .decl new_dependencies(l:label, d:var)
 .output new_dependencies(IO=stdout)
-
+/*-----------------------------------------------------------------------------------------------------------
+/* IF CASE: RECURSIVE, FOR MORE THAN 2 NESTED IF-ELSE
 // /*RIGHT-HAND-SIDE: Case */
-// new_dependencies(l,d) :- external_if(i1,e1,j1), external_if(i2,e2,j1), successive_if(i2,i1),
-//                         new_dependencies()
-// //2a
-// new_dependencies(l,d) :- external_if(i1,e1,j1), external_if(i2,e2,j1), successive_if(i2,i1),
-//                         new_dependencies()
-// //3a
-// new_dependencies(l,d) :- external_if(i1,e1,j1), external_if(i2,e2,j1), successive_if(i2,i1),
-//                         new_dependencies()
+
+// //1a: The dependency on variable d is in both if-else
+// new_dependencies(i1,d) :-     external_if(i1,e1,j1), external_if(i2,e2,j2), successive_if(i2,i1),
+//                              new_dependencies(i2,d), new_dependencies(e2,d),
+//                              counter2 = count:{left_flag(_)}, counter2<1. /*RIGHT-HAND-SIDE CASE*/
+
+// //2a: The dependency on variable d is in only in if
+// new_dependencies(i2,d) :-     external_if(i1,e1,j1), external_if(i2,e2,j2), successive_if(i2,i1),
+//                              new_dependencies(i2,d), !new_dependencies(e2,d),
+//                              counter2 = count:{left_flag(_)}, counter2<1. /*RIGHT-HAND-SIDE CASE*/
+
+// //3a: The dependency on variable d is in only in else
+// new_dependencies(e2,d) :-     external_if(i1,e1,j1), external_if(i2,e2,j2), successive_if(i2,i1),
+//                              !new_dependencies(i2,d), new_dependencies(e2,d),
+//                              counter2 = count:{left_flag(_)}, counter2<1. /*RIGHT-HAND-SIDE CASE*/
+
 // /*LEFT-HAND-SIDE: Case */
-// new_dependencies(l,d) :- external_if(i1,e1,j1), external_if(i2,e2,j1), successive_if(i2,i1),
-//                         new_dependencies()
-// //2a
-// new_dependencies(l,d) :- external_if(i1,e1,j1), external_if(i2,e2,j1), successive_if(i2,i1),
-//                         new_dependencies()
-// //3a
-// new_dependencies(l,d) :- external_if(i1,e1,j1), external_if(i2,e2,j1), successive_if(i2,i1),
-//                         new_dependencies()
+// //1a: The dependency on variable d is in both if-else
+// new_dependencies(j2,d) :-     external_if(i1,e1,j1), external_if(i2,e2,j2), successive_if(i2,i1),
+//                              new_dependencies(i2,d), new_dependencies(e2,d),
+//                              counter2 = count:{left_flag(_)}, counter2>0. /*LEFT-HAND-SIDE CASE*/
+
+// //2a: The dependency on variable d is in only in if
+// new_dependencies(ls,d) :-     external_if(i1,e1,j1), external_if(i2,e2,j2), successive_if(i2,i1),
+//                              new_dependencies(i2,d), !new_dependencies(e2,d), join(ls,_,j2),
+//                              counter2 = count:{left_flag(_)}, counter2>0. /*LEFT-HAND-SIDE CASE*/
+
+// //3a: The dependency on variable d is in only in else
+// new_dependencies(ls,d) :-     external_if(i1,e1,j1), external_if(i2,e2,j2), successive_if(i2,i1),
+//                              !new_dependencies(i2,d), new_dependencies(e2,d), join(_,ls,j2),
+//                              counter2 = count:{left_flag(_)}, counter2>0. /*LEFT-HAND-SIDE CASE*/
+
+
+/* ELSE CASE: RECURSIVE, FOR MORE THAN 2 NESTED IF-ELSE
+// /*LEFT-HAND-SIDE: Case */
+// //1a: The dependency on variable d is in both if-else
+// new_dependencies(e1,d) :-     external_if(i1,e1,j1), external_if(i2,e2,j2), successive_if(e1,i2),
+//                              new_dependencies(i2,d), new_dependencies(e2,d),
+//                              counter2 = count:{left_flag(_)}, counter2<1. /*RIGHT-HAND-SIDE CASE*/
+
+// //2a: The dependency on variable d is in only in if
+// new_dependencies(i2,d) :-     external_if(i1,e1,j1), external_if(i2,e2,j2), successive_if(e1,i2),
+//                              new_dependencies(i2,d), !new_dependencies(e2,d),
+//                              counter2 = count:{left_flag(_)}, counter2<1. /*RIGHT-HAND-SIDE CASE*/
+
+// //3a: The dependency on variable d is in only in else
+// new_dependencies(e2,d) :-     external_if(i1,e1,j1), external_if(i2,e2,j2), successive_if(e1,i2),
+//                              !new_dependencies(i2,d), new_dependencies(e2,d),
+//                              counter2 = count:{left_flag(_)}, counter2<1. /*RIGHT-HAND-SIDE CASE*/
+
+// /*LEFT-HAND-SIDE: Case */
+// //1a: The dependency on variable d is in both if-else
+// new_dependencies(j2,d) :-     external_if(i1,e1,j1), external_if(i2,e2,j2), successive_if(e1,i2),
+//                              new_dependencies(i2,d), new_dependencies(e2,d),
+//                              counter2 = count:{left_flag(_)}, counter2>0. /*LEFT-HAND-SIDE CASE*/
+
+// //2a: The dependency on variable d is in only in if
+// new_dependencies(ls,d) :-     external_if(i1,e1,j1), external_if(i2,e2,j2), successive_if(e1,i2),
+//                              !new_dependencies(i2,d), new_dependencies(e2,d), join(ls,_,j2),
+//                              counter2 = count:{left_flag(_)}, counter2>0. /*LEFT-HAND-SIDE CASE*/
+
+// //3a: The dependency on variable d is in only in else
+// new_dependencies(ls,d) :-     external_if(i1,e1,j1), external_if(i2,e2,j2), successive_if(e1,i2),
+//                              new_dependencies(i2,d), !new_dependencies(e2,d), join(_,ls,j2),
+//                              counter2 = count:{left_flag(_)}, counter2>0. /*LEFT-HAND-SIDE CASE*/
+
+
+
 
 /*-----------------------------------------------------------------------------------------------------------
 /* IF CASE
