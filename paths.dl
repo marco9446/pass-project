@@ -362,10 +362,17 @@ first_sanitize(m,d) :- internal_if(i,e,_), counter1 = count:{external_if(_,_,_)}
 first_sanitize(m,d) :- internal_if(i,e,_), counter1 = count:{external_if(_,_,_)}, counter1 <1, 
             /*Given an internal if, CASE WHERE THERE AREN'T NESTED LOOPS */
                         follows(m,e),
-                        !dependencies(i,_,_,d), dependencies(e,_,_,d),
+                        !dependencies(i,_,_,d), dependencies(e,_,_,d), candidate(e, d),
                         counter2 = count:{left_flag(_)}, counter2<1. /*RIGHT-HAND-SIDE CASE*/
 
-
+/*
+*   first test
+*/
+first_sanitize(m,a) :- internal_if(i,e,_), counter1 = count:{external_if(_,_,_)}, counter1 <1, 
+            /*Given an internal if, CASE WHERE THERE AREN'T NESTED LOOPS */
+                        follows(m,e),
+                        !dependencies(i,_,_,d), dependencies(e,_,a,d), !candidate(e, d),
+                        counter2 = count:{left_flag(_)}, counter2<1. /*RIGHT-HAND-SIDE CASE*/
 
 
 /* 1b, 2b, 3b: CASES FOR LEFT HAND SANITIZE */
