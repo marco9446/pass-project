@@ -417,8 +417,8 @@ first_sanitize(m,d) :- internal_if(i,e,_), counter1 = count:{external_if(_,_,_)}
 
 .decl successive_if(i:label, j:label) /*The if in label i is the successive if of the if in label j*/
 .output successive_if(IO=stdout)
-successive_if(i0,i2) :- if(i0,_,_,_), !if(i1,_,_,_), if(i2,_,_,_), reachable(i2,i0), reachable(i1,i0),
-                        reachable(i1,i0), !reachable(i0,i1), !reachable(i0,i2), if_else_finder(i2,_,_).
+successive_if(i0,i2) :- if(i0,_,_,_), !if(i1,_,_,_), if(i2,_,_,_), reachable(i2,i0),  reachable(i2,i1),
+                        reachable(i1,i0), reachable(i1,i0), !reachable(i0,i1), !reachable(i0,i2), if_else_finder(i2,_,_).
 
 
 .decl new_dependencies(l:label, d:var)
