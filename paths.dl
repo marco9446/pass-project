@@ -362,17 +362,17 @@ first_sanitize(m,d) :- internal_if(i,e,_), counter1 = count:{external_if(_,_,_)}
 first_sanitize(m,d) :- internal_if(i,e,_), counter1 = count:{external_if(_,_,_)}, counter1 <1, 
             /*Given an internal if, CASE WHERE THERE AREN'T NESTED LOOPS */
                         follows(m,e),
-                        !dependencies(i,_,_,d), dependencies(e,_,_,d), candidate(e, d),
+                        !dependencies(i,_,_,d), dependencies(e,_,_,d),
                         counter2 = count:{left_flag(_)}, counter2<1. /*RIGHT-HAND-SIDE CASE*/
 
-/*
-*   first test
-*/
-first_sanitize(m,a) :- internal_if(i,e,_), counter1 = count:{external_if(_,_,_)}, counter1 <1, 
-            /*Given an internal if, CASE WHERE THERE AREN'T NESTED LOOPS */
-                        follows(m,e),
-                        !dependencies(i,_,_,d), dependencies(e,_,a,d), !candidate(e, d),
-                        counter2 = count:{left_flag(_)}, counter2<1. /*RIGHT-HAND-SIDE CASE*/
+// /*
+// *   first test
+// */
+// first_sanitize(m,a) :- internal_if(i,e,_), counter1 = count:{external_if(_,_,_)}, counter1 <1, 
+//             /*Given an internal if, CASE WHERE THERE AREN'T NESTED LOOPS */
+//                         follows(m,e),
+//                         !dependencies(i,_,_,d), dependencies(e,_,a,d), !candidate(e, d),
+//                         counter2 = count:{left_flag(_)}, counter2<1. /*RIGHT-HAND-SIDE CASE*/
 
 
 /* 1b, 2b, 3b: CASES FOR LEFT HAND SANITIZE */
@@ -414,11 +414,27 @@ first_sanitize(m,d) :- internal_if(i,e,_), counter1 = count:{external_if(_,_,_)}
 .decl dependencies_if(i:label, l:label, v:var, d:var ) 
 .decl dependencies_else(i:label, l:label, v:var, d:var )  /variable v in label l, depends on d.
 */
+.decl not_successive_if(i:label, j:label)
+.output not_successive_if(IO=stdout)
+not_successive_if(i0,i2) :- if(i0,_,_,_), if(i1,_,_,_), if(i2,_,_,_),
+                            reachable(i2,i0), reachable(i2,i1), reachable(i1,i0),
+                            !reachable(i0,i1), !reachable(i1,i2),
+                            if_else_finder(i2,_,_).
+
+
+
 
 .decl successive_if(i:label, j:label) /*The if in label i is the successive if of the if in label j*/
 .output successive_if(IO=stdout)
-successive_if(i0,i2) :- if(i0,_,_,_), !if(i1,_,_,_), if(i2,_,_,_), reachable(i2,i0),  reachable(i2,i1),
-                        reachable(i1,i0), reachable(i1,i0), !reachable(i0,i1), !reachable(i0,i2), if_else_finder(i2,_,_).
+successive_if(i0,i2) :- if(i0,_,_,_), if(i2,_,_,_), reachable(i2,i0),
+                        if_else_finder(i2,_,_), !not_successive_if(i0,i2).
+
+// .decl successive_if(i:label, j:label) /*The if in label i is the successive if of the if in label j*/
+// .output successive_if(IO=stdout)
+// successive_if(i0,i2) :- if(i0,_,_,_), !if(i1,_,_,_), if(i2,_,_,_), reachable(i2,i0),
+//                         reachable(i1,i0), !reachable(i0,i1), !reachable(i0,i2), 
+//                         if_else_finder(i2,_,_), !not_successive_if(i0,i2).
+
 
 
 .decl new_dependencies(l:label, d:var)
@@ -498,16 +514,16 @@ successive_if(i0,i2) :- if(i0,_,_,_), !if(i1,_,_,_), if(i2,_,_,_), reachable(i2,
 /*-----------------------------------------------------------------------------------------------------------
 /* IF CASE
 /*RIGHT-HAND-SIDE: Case when we arrive at the "last" level, when the external if has only the internal if inside*/
-new_dependencies(i1,d) :-    external_if(i1,_,_), internal_if(i2,e2,_), successive_if(i1,i2),
+new_dependencies(i2,d) :-    external_if(i1,_,_), internal_if(i2,e2,_), successive_if(i1,i2),
                             dependencies(i2,_,_,d), dependencies(e2,_,_,d),
                             counter2 = count:{left_flag(_)}, counter2<1. /*RIGHT-HAND-SIDE CASE*/
 
-new_dependencies(i2,d) :-    external_if(i1,_,_), internal_if(i2,e2,_), successive_if(i1,i2),
+new_dependencies(ls,d) :-    external_if(i1,_,_), internal_if(i2,e2,_), successive_if(i1,i2), follows(ls,i2),
                             dependencies(i2,_,_,d), !dependencies(e2,_,_,d),
                             counter2 = count:{left_flag(_)}, counter2<1. /*RIGHT-HAND-SIDE CASE*/
 
 
-new_dependencies(e2,d) :-    external_if(i1,_,_), internal_if(i2,e2,_), successive_if(i1,i2),
+new_dependencies(ls,d) :-    external_if(i1,_,_), internal_if(i2,e2,_), successive_if(i1,i2), follows(ls,e2),
                             !dependencies(i2,_,_,d), dependencies(e2,_,_,d),
                             counter2 = count:{left_flag(_)}, counter2<1. /*RIGHT-HAND-SIDE CASE*/
 
@@ -529,16 +545,16 @@ new_dependencies(ls,d) :-    external_if(i1,_,_), internal_if(i2,e2,_), successi
 /* ELSE CASE
 */
 /*RIGHT-HAND-SIDE: */
-new_dependencies(e1,d) :-    external_if(_,e1,_), internal_if(i2,e2,_), successive_if(e1,i2),
+new_dependencies(e2,d) :-    external_if(_,e1,_), internal_if(i2,e2,_), successive_if(e1,i2),
                             dependencies(i2,_,_,d), dependencies(e2,_,_,d),
                             counter2 = count:{left_flag(_)}, counter2<1. /*RIGHT-HAND-SIDE CASE*/
 
-new_dependencies(i2,d) :-    external_if(_,e1,_), internal_if(i2,e2,_), successive_if(e1,i2),
+new_dependencies(ls,d) :-    external_if(_,e1,_), internal_if(i2,e2,_), successive_if(e1,i2),follows(ls,i2),
                             dependencies(i2,_,_,d), !dependencies(e2,_,_,d),
                             counter2 = count:{left_flag(_)}, counter2<1. /*RIGHT-HAND-SIDE CASE*/
 
 
-new_dependencies(e2,d) :-    external_if(_,e1,_), internal_if(i2,e2,_), successive_if(e1,i2),
+new_dependencies(ls,d) :-    external_if(_,e1,_), internal_if(i2,e2,_), successive_if(e1,i2),follows(ls,e2),
                             !dependencies(i2,_,_,d), dependencies(e2,_,_,d),
                             counter2 = count:{left_flag(_)}, counter2<1. /*RIGHT-HAND-SIDE CASE*/
 
