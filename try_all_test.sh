@@ -15,14 +15,15 @@ remove_temp_file(){
     fi
 }
 
-for entry in "./test"/*
+for entry in `ls test/ | sort -V`;
 do
+    path="./test/$entry"
     echo -e "${YELLOW}${entry} ${NC}" 
 
     remove_temp_file;
-    cat  $entry  $MAIN_FILE  >> $TEMP_FILE
+    cat  $path  $MAIN_FILE  >> $TEMP_FILE
     souffle $TEMP_FILE | sed -n "/${FUNCTION_TO_SHOW}/,/---------------/p" 
-    grep "expected" $entry
+    grep "expected" $path
     remove_temp_file;
     echo ""
 
