@@ -19,7 +19,7 @@
 
 
 .decl reachable(l:label, j:label)
-//.output reachable(IO=stdout)
+// .output reachable(IO=stdout)
 reachable(X,Y)  :-  follows(X,Y).
 reachable(X,Y)  :-  reachable(X,Z), follows(Z,Y).
 
@@ -33,8 +33,15 @@ if_paths(l,j) :- if_paths(l,x), reachable(x,j).
 else_paths(l,j) :- join(l,_,j).
 else_paths(l,j) :- else_paths(l,x), reachable(x,j).
 
+
+.decl Labels(i:label )
+// .output Labels(IO=stdout)
+Labels(l) :- source(l,_).
+Labels(l) :- follows(l,_).
+Labels(l) :- follows(_,l).
+
 .decl candidate( l:label, x: var) 
-//.output candidate(IO=stdout)
+// .output candidate(IO=stdout)
 candidate(l, x) :- source( l ,x).
 candidate(l, x) :- assign(l,x,y,_), candidate(_,y).
 candidate(l, y) :- assign(l,_,y,_), candidate(_,y).
@@ -169,7 +176,7 @@ internal_if(l,e,j) :- if_else_finder(l,e,j), !external_if(l,_,_).
     Given a label l, find the immediate predecessor 'if' to which that label belongs.
 */
 .decl belonging_if(j:label, l:label) /* Label l belongs to if in label j */
-.output belonging_if(IO=stdout)
+// .output belonging_if(IO=stdout)
 belonging_if(j,l) :- (internal_if(j,_,_);internal_if(_,j,_)), assign(l,_,_,_), if(j,_,_,_), reachable(l,j).
 
 
@@ -343,10 +350,27 @@ most_external_if(i,e,j) :- external_if(i,e,j), !external_if(i2,_,_), reachable(i
 */
 
 .decl dependencies(i:label, l:label, v:var, d:var )
-.output dependencies(IO=stdout)
+// .output dependencies(IO=stdout)
 dependencies(i,l,v,d) :- dependencies_if(i,l,v,d).
 dependencies(i,l,v,d) :- dependencies_else(i,l,v,d).
 
+
+.decl not_candidate(l:label, v:var)
+// .output not_candidate(IO=stdout)
+not_candidate(l, v) :- assign(l, v, _, _), !candidate(l,_).
+
+
+//FIXME: specify that the not_candidate line has to be after the candidate line
+.decl sanitize_no_if(l:label, v:var)
+// .output sanitize_no_if(IO=stdout)
+sanitize_no_if(l,b) :- !if(_,_,_,_), 
+                            sink(l, b), 
+                            candidate(s, b), 
+                            !assign(s, _, b, _), !assign(s, _, _, b),
+                            !not_candidate(_, b).
+
+
+// !assign(p, b, _, _), Labels(p) , !candidate(p,b),  !assign(s, _, b, _), !assign(s, _, _, b)
 
 /*
 First sanitize: for the non nested loop, to make it easier. for now
@@ -354,6 +378,8 @@ First sanitize: for the non nested loop, to make it easier. for now
 */
 .decl first_sanitize(l:label, d:var)
 .output first_sanitize(IO=stdout)
+
+first_sanitize(l,d) :- sanitize_no_if(l,d).
 
 /* 1a, 2a, 3a: CASES FOR RIGHT HAND SANITIZE */
 /* 1a- CASE:
@@ -444,7 +470,7 @@ successive_if(i0,i2) :- if(i0,_,_,_), if(i2,_,_,_), reachable(i2,i0),
 
 
 .decl new_dependencies(l:label, d:var)
-.output new_dependencies(IO=stdout)
+// .output new_dependencies(IO=stdout)
 /*-----------------------------------------------------------------------------------------------------------
 /* IF CASE: RECURSIVE, FOR MORE THAN 2 NESTED IF-ELSE
 /*RIGHT-HAND-SIDE: Case */
