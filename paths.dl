@@ -579,8 +579,31 @@ new_dependencies(ls,d) :-    external_if(_,e1,_), internal_if(i2,e2,_), successi
 
 
 
-// .decl second_sanitize(l:label, d:var)
+// .decl second_sanitize(l1:label, l:label, d:var)
 // .output second_sanitize(IO=stdout)
+// second_sanitize(i1, i1, d) :- internal_if(i1, e1, _), 
+//                                 dependencies(i1,_,_,d), 
+//                                 dependencies(e1,_,_,d),
+//                                 successive_if(i2, i1),
+//                                 second_sanitize(i2,i1,d).
+// second_sanitize(i1, i1, v) :- !internal_if(i1, e1, _), 
+//                                 if_else_finder(i1, e1, j1),
+//                                 candidate(_, v),
+//                                 !dependencies(e1,_,_,v).
+
+
+
+// .decl omg(l:label, x:number)
+// .output minT(IO=stdout)
+
+// omg("l1", 1).
+// omg("l1", 2).
+// omg("l1", 3).
+// .decl minT(l:label, n:number)
+// .output minT(IO=stdout)
+// minT(l, min x:{omg(l, x)}) :- omg(l,x) .
+
+
 // second_sanitize(i,d) :- most_external_if(i,e,j), counter1 = count:{external_if(_,_,_)}, counter1 >0, 
 //                        new_dependencies(i,_,_,d), new_dependencies(e,_,_,d),
 //                        counter2 = count:{left_flag(_)}, counter2<1. /*RIGHT-HAND-SIDE CASE*/
