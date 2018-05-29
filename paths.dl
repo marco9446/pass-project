@@ -1,3 +1,4 @@
+// don't remove this comment 
 .type label
 .type var
 .type opc = [x:number,c:number]
@@ -466,7 +467,7 @@ new_dependencies(i1,d) :-     external_if(i1,_,j1), external_if(i2,e2,j2), succe
 
 // /*LEFT-HAND-SIDE: Case */
 //1a: The dependency on variable d is in both if-else
-new_dependencies(j2,d) :-     external_if(i1,_,j1), external_if(i2,e2,j2), successive_if(i2,i1),
+new_dependencies(j2,d) :-     external_if(i1,_,_), external_if(i2,e2,j2), successive_if(i2,i1),
                              new_dependencies(i2,d), new_dependencies(e2,d),
                              counter2 = count:{left_flag(_)}, counter2>0. /*LEFT-HAND-SIDE CASE*/
 
@@ -484,7 +485,7 @@ new_dependencies(j2,d) :-     external_if(i1,_,j1), external_if(i2,e2,j2), succe
 /* ELSE CASE: RECURSIVE, FOR MORE THAN 2 NESTED IF-ELSE
 // /*LEFT-HAND-SIDE: Case */
 //1a: The dependency on variable d is in both if-else
-new_dependencies(e1,d) :-     external_if(i1,e1,j1), external_if(i2,e2,j2), successive_if(e1,i2),
+new_dependencies(e1,d) :-     external_if(_,e1,_), external_if(i2,e2,_), successive_if(e1,i2),
                              new_dependencies(i2,d), new_dependencies(e2,d),
                              counter2 = count:{left_flag(_)}, counter2<1. /*RIGHT-HAND-SIDE CASE*/
 
@@ -500,7 +501,7 @@ new_dependencies(e1,d) :-     external_if(i1,e1,j1), external_if(i2,e2,j2), succ
 
 // /*LEFT-HAND-SIDE: Case */
 //1a: The dependency on variable d is in both if-else
-new_dependencies(j2,d) :-     external_if(i1,e1,j1), external_if(i2,e2,j2), successive_if(e1,i2),
+new_dependencies(j2,d) :-     external_if(_,e1,_), external_if(i2,e2,j2), successive_if(e1,i2),
                              new_dependencies(i2,d), new_dependencies(e2,d),
                              counter2 = count:{left_flag(_)}, counter2>0. /*LEFT-HAND-SIDE CASE*/
 
