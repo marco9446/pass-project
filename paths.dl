@@ -176,7 +176,7 @@ internal_if(l,e,j) :- if_else_finder(l,e,j), !external_if(l,_,_).
     Given a label l, find the immediate predecessor 'if' to which that label belongs.
 */
 .decl belonging_if(j:label, l:label) /* Label l belongs to if in label j */
-//.output belonging_if(IO=stdout)
+.output belonging_if(IO=stdout)
 belonging_if(j,l) :- (internal_if(j,_,_);internal_if(_,j,_)), assign(l,_,_,_), if(j,_,_,_), reachable(l,j).
 
 belonging_if(j,l) :- (internal_if(j,_,_);internal_if(_,j,_)), assign(l,_,_,_), if(j,_,_,_), reachable(l,j).
@@ -353,7 +353,7 @@ most_external_if(i,e,j) :- if(i,_,_,_), if(e,_,_,_), successive_if(i,_), success
 */
 
 .decl dependencies(i:label, l:label, v:var, d:var )
-// .output dependencies(IO=stdout)
+.output dependencies(IO=stdout)
 dependencies(i,l,v,d) :- dependencies_if(i,l,v,d).
 dependencies(i,l,v,d) :- dependencies_else(i,l,v,d).
 
@@ -600,7 +600,7 @@ not_final(l,d, l1) :-   ( new_dependencies(l,d); very_new_dependencies(l,d) ),
 .decl very_new_dependencies(l:label, d:var) /*Prende dependencies e ricopia mettendo il sanitize nel label subito dopo */
 .output very_new_dependencies(IO=stdout)
 
-very_new_dependencies(l,d) :- dependencies(q,_,_,d), follows(l,q), counter2 = count:{left_flag(_)}, counter2<1.
+very_new_dependencies(l,d) :- dependencies(q,_,_,d), if(q,l,_,_), counter2 = count:{left_flag(_)}, counter2<1.
 very_new_dependencies(l,d) :- dependencies(_,q,_,d), follows(l,q), counter2 = count:{left_flag(_)}, counter2>0.
 
 /*
@@ -618,6 +618,6 @@ second_sanitize(lp,d) :-    ( new_dependencies(lp,d);very_new_dependencies(lp,d)
     RICORDA DI FARE IL LEFTT!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1
-    
+
 */
 
