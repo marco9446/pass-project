@@ -2,7 +2,7 @@
 
 TEMP_FILE="out.dl"
 MAIN_FILE="paths.dl"
-FUNCTION_TO_SHOW="first_sanitize"
+FUNCTION_TO_SHOW="second_sanitize"
 
 
 

@@ -339,7 +339,7 @@ dependencies_else(else_label,j,v,v ) :-  else_paths(join_label, j),
 
 .decl most_external_if(i:label, e:label, j:label)
 .output most_external_if(IO=stdout)
-most_external_if(i,e,j) :- if(i,_,_,_), if(e,_,_,_), successive_if(i,lq1), successive_if(e,lq2), 
+most_external_if(i,e,j) :- if(i,_,_,_), if(e,_,_,_), successive_if(i,_), successive_if(e,_), 
                             !successive_if(_,i), !successive_if(_,e), if_else_finder(i,e,j).
 
 
