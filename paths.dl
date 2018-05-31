@@ -128,30 +128,31 @@ source_sink_NOT_assigned_in_a_path(else_label, l, v) :- source(_,v), sink(_,v), 
     in another path.
 */
 .decl var_in_sink_assigned_in_a_path(i:label, l:label, v:var)
-//.output var_in_sink_assigned_in_a_path(IO=stdout)
+.output var_in_sink_assigned_in_a_path(IO=stdout)
 
-var_in_sink_assigned_in_a_path(if_label,j,v ) :-   sink(_,v), if_paths(join_label, j), 
-                                                reachable(j,if_label), /*Only counts assignments
-                                                                        after the if */
-                                                if_else_finder(if_label, _, join_label),
-                                                ( assign(j,v,d,_); assign(j,v,_,d) ).
+var_in_sink_assigned_in_a_path(if_label,j,v ) :- ( assign(j,v,d,_); assign(j,v,_,d) ),
+                                                    sink(_,v),
+                                                    belonging_if(if_label,j).
 
-var_in_sink_assigned_in_a_path(else_label,j,v ) :-  sink(_,v), else_paths(join_label, j),
-                                                    reachable(j,else_label),
-                                                    if_else_finder(_,else_label , join_label),
-                                                    ( assign(j,v,d,_); assign(j,v,_,d) ).
 
 
 .decl var_in_sink_NOT_assigned_in_a_path(i:label, l:label, v:var)
-//.output var_in_sink_NOT_assigned_in_a_path(IO=stdout)
+.output var_in_sink_NOT_assigned_in_a_path(IO=stdout)
 
-var_in_sink_NOT_assigned_in_a_path(if_label, l, v) :- sink(_,v), if(if_label,l,_,_),
-                                        if_else_finder(if_label, _, _),
-                                        !var_in_sink_assigned_in_a_path(if_label,_,v).
+var_in_sink_NOT_assigned_in_a_path(else_label, l, v) :- var_in_sink_assigned_in_a_path(if_label,_,v),
+                                                        !assign(lq,v,_,_), belonging_if(lif,lq), 
+                                                        reachable(lq,else_label),
+                                                        if_else_finder(if_label, else_label,_),
+                                                        follows(l,else_label),
+                                                        !var_in_sink_assigned_in_a_path(else_label,_,v).
 
-var_in_sink_NOT_assigned_in_a_path(else_label, l, v) :- sink(_,v), if(else_label,l,_,_),
-                                        if_else_finder(_,else_label, _),
-                                        !var_in_sink_assigned_in_a_path(else_label,_,v).
+var_in_sink_NOT_assigned_in_a_path(if_label, l, v) :- var_in_sink_assigned_in_a_path(else_label,_,v),
+                                                        !assign(lq,v,_,_), belonging_if(lif,lq), 
+                                                        reachable(lq,if_label),
+                                                        if_else_finder(if_label, else_label,_),
+                                                        follows(l,if_label),
+                                                        !var_in_sink_assigned_in_a_path(if_label,_,v).
+
 
 
 
@@ -175,11 +176,15 @@ internal_if(l,e,j) :- if_else_finder(l,e,j), !external_if(l,_,_).
 /*
     Given a label l, find the immediate predecessor 'if' to which that label belongs.
 */
+.decl NOT_belonging_if(j:label, l:label) /* Label l DOES NOT belong to if in label j */
+//.output NOT_belonging_if(IO=stdout)
+NOT_belonging_if(j1,l) :- assign(l,_,_,_), if(j1,_,_,_), if(j2,_,_,_), reachable(l,j1), reachable(l,j2),
+                        !reachable(j1,j2), reachable(j2,j1).
+
 .decl belonging_if(j:label, l:label) /* Label l belongs to if in label j */
 .output belonging_if(IO=stdout)
-belonging_if(j,l) :- (internal_if(j,_,_);internal_if(_,j,_)), assign(l,_,_,_), if(j,_,_,_), reachable(l,j).
+belonging_if(j1,l) :- assign(l,_,_,_), if(j1,_,_,_), reachable(l,j1), !NOT_belonging_if(j1,l).
 
-belonging_if(j,l) :- (internal_if(j,_,_);internal_if(_,j,_)), assign(l,_,_,_), if(j,_,_,_), reachable(l,j).
 
 
 /*  
@@ -202,25 +207,16 @@ belonging_if(j,l) :- (internal_if(j,_,_);internal_if(_,j,_)), assign(l,_,_,_), i
     (Being a 'candidate' before that assign means that: d is a source or something that had a source assigned before that label j).
     Therefore, put the dependcy in the corresponding if_label.
 */
-dependencies_if(if_label,j,v,d ) :-   if_paths(join_label, j), /*Given a path (join_label, l0...li).*/
-                                    belonging_if(if_label,j), /*Takes only the belonging if of the assign */
-                                    reachable(j,if_label), /*It is used to check that the assignment
-                                                            happens inside the if, and not outside.
-                                                            */
-                                    if_else_finder(if_label, _, join_label), /*Used to retrieve the if
-                                                                                belonging to that join_label
-                                                                                */
-                                    ( assign(j,v,d,_); assign(j,v,_,d) ),  /*There has to be an assign v = d ...
+dependencies_if(belonging_label,j,v,d ) :- ( assign(j,v,d,_); assign(j,v,_,d) ),  /*There has to be an assign v = d ...
                                                                             where v is the variable to sink and
                                                                             d the dependency
                                                                             */
+                                    belonging_if(belonging_label,j), /*Takes only the belonging if of the assign */
                                     candidate(l,d), reachable(j,l) , /* The dependency d, which is a 'candidate'
                                                                         can be wherever BUT it has to be 
                                                                         reachable from the 'path_labels',
                                                                         this mean  that has to be above */                                                                      
-                                    var_in_sink_assigned_in_a_path(if_label, _, v), /* The variable v has to be assigned in this 
-                                                                                        path, otherwise the next rule has to be used.
-                                                                                        */
+
                                     sink(_,v), c = count:{left_flag(_)}, c<1.   /*Has to be in the sink and we have to be in the
                                                                                  "right-hand" side mode.
                                                                                 */
