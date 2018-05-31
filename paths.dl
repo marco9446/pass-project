@@ -140,14 +140,14 @@ var_in_sink_assigned_in_a_path(if_label,j,v ) :- ( assign(j,v,d,_); assign(j,v,_
 .output var_in_sink_NOT_assigned_in_a_path(IO=stdout)
 
 var_in_sink_NOT_assigned_in_a_path(else_label, l, v) :- var_in_sink_assigned_in_a_path(if_label,_,v),
-                                                        !assign(lq,v,_,_), belonging_if(lif,lq), 
+                                                        !assign(lq,v,_,_), belonging_if(_,lq), 
                                                         reachable(lq,else_label),
                                                         if_else_finder(if_label, else_label,_),
                                                         follows(l,else_label),
                                                         !var_in_sink_assigned_in_a_path(else_label,_,v).
 
 var_in_sink_NOT_assigned_in_a_path(if_label, l, v) :- var_in_sink_assigned_in_a_path(else_label,_,v),
-                                                        !assign(lq,v,_,_), belonging_if(lif,lq), 
+                                                        !assign(lq,v,_,_), belonging_if(_,lq), 
                                                         reachable(lq,if_label),
                                                         if_else_finder(if_label, else_label,_),
                                                         follows(l,if_label),
