@@ -41,13 +41,13 @@ Labels(l) :- follows(l,_).
 Labels(l) :- follows(_,l).
 
 .decl candidate( l:label, x: var) 
-// .output candidate(IO=stdout)
+.output candidate(IO=stdout)
 candidate(l, x) :- source( l ,x).
 candidate(l, x) :- assign(l,x,y,_), candidate(_,y).
 candidate(l, y) :- assign(l,_,y,_), candidate(_,y).
 candidate(l, x) :- assign(l,x,_,z), candidate(_,z).
 candidate(l, z) :- assign(l,_,_,z), candidate(_,z).
-candidate(l, x) :- ( if(l,_,x,_);if(l,_,_,x)), candidate(_,x).
+candidate(l, x) :- ( if(l,_,x,_);if(l,_,_,x)), candidate(q,x), reachable(l,q).
 
 
 /*
@@ -95,7 +95,7 @@ to_check( x) :- sink( _ ,x).
     This rule will be used later to find the opposite.
 */
 .decl source_sink_assigned_in_a_path(i:label, l:label, v:var)
-//.output source_sink_assigned_in_a_path(IO=stdout)
+.output source_sink_assigned_in_a_path(IO=stdout)
 
 source_sink_assigned_in_a_path(if_label,j,v ) :- source(_,v), sink(_,v), if_paths(join_label, j),
                                         if_else_finder(if_label, _, join_label),
@@ -112,7 +112,7 @@ source_sink_assigned_in_a_path(else_label,j,v ) :- source(_,v), sink(_,v), else_
     else_label 'l'.
 */
 .decl source_sink_NOT_assigned_in_a_path(i:label, l:label, v:var)
-//.output source_sink_NOT_assigned_in_a_path(IO=stdout)
+.output source_sink_NOT_assigned_in_a_path(IO=stdout)
 
 source_sink_NOT_assigned_in_a_path(if_label, l, v) :- source(_,v), sink(_,v), if(if_label,l,_,_),
                                         if_else_finder(if_label, _, _),
@@ -140,19 +140,38 @@ var_in_sink_assigned_in_a_path(if_label,j,v ) :- ( assign(j,v,d,_); assign(j,v,_
 .output var_in_sink_NOT_assigned_in_a_path(IO=stdout)
 
 var_in_sink_NOT_assigned_in_a_path(else_label, l, v) :- var_in_sink_assigned_in_a_path(if_label,_,v),
-                                                        !assign(lq,v,_,_), belonging_if(_,lq), 
+                                                        !assign(lq,v,_,_), belonging_if(lif,lq), 
                                                         reachable(lq,else_label),
                                                         if_else_finder(if_label, else_label,_),
                                                         follows(l,else_label),
                                                         !var_in_sink_assigned_in_a_path(else_label,_,v).
 
 var_in_sink_NOT_assigned_in_a_path(if_label, l, v) :- var_in_sink_assigned_in_a_path(else_label,_,v),
-                                                        !assign(lq,v,_,_), belonging_if(_,lq), 
+                                                        !assign(lq,v,_,_), belonging_if(lif,lq), 
                                                         reachable(lq,if_label),
                                                         if_else_finder(if_label, else_label,_),
                                                         follows(l,if_label),
                                                         !var_in_sink_assigned_in_a_path(if_label,_,v).
 
+/* 
+    Data una variabile y, che ha un "path" in cui non viene assegnata", trova gli assignment precedenti
+    ci servirà per poi prendere l'ultimo
+*/
+.decl find_all_previous_ass_of_var_NOT_assigned( l:label, j:label)
+.output find_all_previous_ass_of_var_NOT_assigned(IO=stdout)
+find_all_previous_ass_of_var_NOT_assigned(l,j) :- var_in_sink_NOT_assigned_in_a_path(if_label, j, v),
+                                                ( assign(l,v,d,_);assign(l,v,_,d) ), candidate(ld,d), reachable(l,ld),
+                                                reachable(j,l).
+
+// .decl find_all_previous_ass_of_var_NOT_assigned_UNO( l:label, j:label)
+// .output find_all_previous_ass_of_var_NOT_assigned_UNO(IO=stdout)
+// find_all_previous_ass_of_var_NOT_assigned(l,j) :- var_in_sink_NOT_assigned_in_a_path(if_label, j, v),
+//                                                 ( assign(l,v,d,_);assign(l,v,_,d) ), candidate(ld,d), reachable(l,ld),
+//                                                 reachable(j,l).
+
+
+// .decl find_all_previous_ass_of_var_NOT_assigned_DUE( l:label, j:label)
+// .output find_all_previous_ass_of_var_NOT_assigned_DUE(IO=stdout)
 
 
 
@@ -194,7 +213,7 @@ belonging_if(j1,l) :- assign(l,_,_,_), if(j1,_,_,_), reachable(l,j1), !NOT_belon
 */ 
 
 .decl dependencies_if(i:label, l:label, v:var, d:var ) 
-//.output dependencies_if(IO=stdout)
+.output dependencies_if(IO=stdout)
 
 
 /*  ---------------------------------------------------------------------------------------
@@ -222,115 +241,104 @@ dependencies_if(belonging_label,j,v,d ) :- ( assign(j,v,d,_); assign(j,v,_,d) ),
                                                                                 */
 
 
-/*  There may a case where a variable v, requested in a sink method, is assigned to something else in a 
-    path (eg. in the if path) but not assigned in another path (eg. the else path).
-    If that variable was assigned to something else before the if-path, then the else path has to take it 
-    into account. This function therefore sets this dependency.
-*/
- dependencies_if(if_label,j,v,d ) :-    if_paths(join_label, j), /*Given a path (join_label, l0...li).*/ 
-                                        if_else_finder(if_label, _, join_label), 
-                                        (assign(l,v,d,_);assign(l,v,_,d)), /* Given an assign... */
-                                        follows(jf, if_label), /*To put the dependency on the label
-                                                                following the if_label
-                                                                */
-                                        reachable(j,l) ,    /*  That has still to be in the path, 
-                                                                but doesn't matter that it is after the if_label */
-                                        candidate(l1,d), reachable(j,l1), /*  Where d is a candidate
-                                                                            belonging to the path as well
-                                                                        */
-                                        var_in_sink_NOT_assigned_in_a_path(if_label, _, v),
-                                        sink(_,v), c = count:{left_flag(_)}, c<1.
-                              
-/* 
-    Used to create the dependcy of a variable from the candidates in an if 
-*/
-dependencies_if(ls,j,v,d ) :-  if_paths(join_label, j), belonging_if(ls, j),
-                                    if_paths(join_label, l), ( if(l,_,d,_);if(l,_,_,d)), 
-                                    assign(j,v,_,_), candidate(l,d),  v!=d,
-                                    sink(_,v), c = count:{left_flag(_)}, c<1.
+// /*  There may a case where a variable v, requested in a sink method, is assigned to something else in a 
+//     path (eg. in the if path) but not assigned in another path (eg. the else path).
+//     If that variable was assigned to something else before the if-path, then the else path has to take it 
+//     into account. This function therefore sets this dependency.
+// */
+// dependencies_if(path_label,j,v,d ) :-   var_in_sink_NOT_assigned_in_a_path(path_label, j, v),
 
-/*  ---------------------------------------------------------------------------------------
-*   THESE  DEPENDENCy is MADE IN CASE WE TAKE THE LEFT HAND SIDE DEPENDENCIES
-*   ---------------------------------------------------------------------------------------
-*/dependencies_if(if_label,j,v,v ) :-   if_paths(join_label, j), 
-                                    if_else_finder(if_label, _, join_label),
-                                    ( assign(j,v,d,_); assign(j,v,_,d) ), 
-                                    candidate(l,d), reachable(j,l),
-                                    sink(_,v), c = count:{left_flag(_)}, c>0.
+//                                         sink(_,v), c = count:{left_flag(_)}, c<1.
 
 
-/* 
-    The following function is used in the case where there is a source, used at the end in a sink method.
-    Given two paths, a and b, it may happen that x is assigned to something in a but not assigned in b, therefore
-    in b has to be sanitized. The dependency is created of "itself".
 
-*/
-dependencies_if(if_label,j,v,v ) :- source_sink_NOT_assigned_in_a_path(if_label, j, v),
-                                    if_paths(join_label, j), 
-                                    if_else_finder(if_label, _, join_label).
-  
-
-/*
-    To make things more schematic same things are done for the else cases 
-*/
+//TODO: SERVE FORSE IL CASO IN CUI LA X, SOURCE, VIENE SEMPRE ASSEGNATA A DELLE COSTANTI ?
 
 
-.decl dependencies_else(i:label, l:label, v:var, d:var )  //variable v in label l, depends on d.
-//.output dependencies_else(IO=stdout)
+// /* 
+//     Used to create the dependcy of a variable from the candidates in an if 
+// */
+// dependencies_if(ls,j,v,d ) :-  if_paths(join_label, j), belonging_if(ls, j),
+//                                     if_paths(join_label, l), ( if(l,_,d,_);if(l,_,_,d)), 
+//                                     assign(j,v,_,_), candidate(l,d),  v!=d,
+//                                     sink(_,v), c = count:{left_flag(_)}, c<1.
 
-/* THESE DEPENDENCIES ARE MADE IN CASE WE TAKE THE RIGHT HAND SIDE DEPENDENCIES */
-
-dependencies_else(else_label,j,v,d ) :-  else_paths(join_label, j), reachable(j,else_label),
-                                        //belonging_if(if_label,j),
-                                        if_else_finder(if_label, else_label, join_label),
-                                        ( assign(j,v,d,_); assign(j,v,_,d) ),
-                                        candidate(l,d), reachable(j,l),
-                                        var_in_sink_assigned_in_a_path(else_label, _, v),
-                                        sink(_,v),c = count:{left_flag(_)}, c<1.
-
-dependencies_else(else_label,j,v,d ) :-  else_paths(join_label, j),
-                                        if_else_finder(_, else_label, join_label),
-                                        else_paths(join_label, l),( if(l,_,d,_);if(l,_,_,d)), 
-                                        assign(j,v,_,_), candidate(l,d),  v!=d,
-                                        sink(_,v), c = count:{left_flag(_)}, c<1.
+// /*  ---------------------------------------------------------------------------------------
+// *   THESE  DEPENDENCy is MADE IN CASE WE TAKE THE LEFT HAND SIDE DEPENDENCIES
+// *   ---------------------------------------------------------------------------------------
+// */dependencies_if(if_label,j,v,v ) :-   if_paths(join_label, j), 
+//                                     if_else_finder(if_label, _, join_label),
+//                                     ( assign(j,v,d,_); assign(j,v,_,d) ), 
+//                                     candidate(l,d), reachable(j,l),
+//                                     sink(_,v), c = count:{left_flag(_)}, c>0.
 
 
- dependencies_else(else_label,jf,v,v ) :-    else_paths(join_label, j), /*Given a path (join_label, l0...li).*/ 
-                                        if_else_finder( _,else_label, join_label), 
-                                        follows(jf, else_label), /*Used to put the dependency 
-                                                                on the label following the else_label
-                                                                */
-                                        (assign(l,v,d,_);assign(l,v,_,d)), /* Given an assign... */
-                                        reachable(j,l) ,    /*  That has still to be in the path, 
-                                                                but doesn't matter that it is after the if_label */
-                                        ( assign(l1,v,d,_);assign(l1,v,_,d)), reachable(j,l1), /*  Where d is a candidate
-                                                                            belonging to the path as well
-                                                                        */
-                                        candidate(lll,d), reachable(l1,lll),
-                                        var_in_sink_NOT_assigned_in_a_path(else_label, _, v),
-                                        /*
-                                        Necesserly, the sanitize has to be made in that body at the end of the left
-                                        hand side variable. 
-                                        */
-                                        sink(_,v), c = count:{left_flag(_)}, c<1.
+// /* 
+//     The following function is used in the case where there is a source, used at the end in a sink method.
+//     Given two paths, a and b, it may happen that x is assigned to something in a but not assigned in b, therefore
+//     in b has to be sanitized. The dependency is created of "itself".
+
+// */
+dependencies_if(if_label,j,v,v ) :- source_sink_NOT_assigned_in_a_path(if_label, j, v).
+
+
+
+// .decl dependencies_else(i:label, l:label, v:var, d:var )  //variable v in label l, depends on d.
+// //.output dependencies_else(IO=stdout)
+
+// /* THESE DEPENDENCIES ARE MADE IN CASE WE TAKE THE RIGHT HAND SIDE DEPENDENCIES */
+
+// dependencies_else(else_label,j,v,d ) :-  else_paths(join_label, j), reachable(j,else_label),
+//                                         //belonging_if(if_label,j),
+//                                         if_else_finder(if_label, else_label, join_label),
+//                                         ( assign(j,v,d,_); assign(j,v,_,d) ),
+//                                         candidate(l,d), reachable(j,l),
+//                                         var_in_sink_assigned_in_a_path(else_label, _, v),
+//                                         sink(_,v),c = count:{left_flag(_)}, c<1.
+
+// dependencies_else(else_label,j,v,d ) :-  else_paths(join_label, j),
+//                                         if_else_finder(_, else_label, join_label),
+//                                         else_paths(join_label, l),( if(l,_,d,_);if(l,_,_,d)), 
+//                                         assign(j,v,_,_), candidate(l,d),  v!=d,
+//                                         sink(_,v), c = count:{left_flag(_)}, c<1.
+
+
+//  dependencies_else(else_label,jf,v,v ) :-    else_paths(join_label, j), /*Given a path (join_label, l0...li).*/ 
+//                                         if_else_finder( _,else_label, join_label), 
+//                                         follows(jf, else_label), /*Used to put the dependency 
+//                                                                 on the label following the else_label
+//                                                                 */
+//                                         (assign(l,v,d,_);assign(l,v,_,d)), /* Given an assign... */
+//                                         reachable(j,l) ,    /*  That has still to be in the path, 
+//                                                                 but doesn't matter that it is after the if_label */
+//                                         ( assign(l1,v,d,_);assign(l1,v,_,d)), reachable(j,l1), /*  Where d is a candidate
+//                                                                             belonging to the path as well
+//                                                                         */
+//                                         candidate(lll,d), reachable(l1,lll),
+//                                         var_in_sink_NOT_assigned_in_a_path(else_label, _, v),
+//                                         /*
+//                                         Necesserly, the sanitize has to be made in that body at the end of the left
+//                                         hand side variable. 
+//                                         */
+//                                         sink(_,v), c = count:{left_flag(_)}, c<1.
                               
 
-dependencies_else(else_label,j,v,v ) :- source_sink_NOT_assigned_in_a_path(else_label, j, v),
-                                    else_paths(join_label, j), belonging_if(else_label,j),
-                                    if_else_finder(_, else_label,  join_label).
+// dependencies_else(else_label,j,v,v ) :- source_sink_NOT_assigned_in_a_path(else_label, j, v),
+//                                     else_paths(join_label, j), belonging_if(else_label,j),
+//                                     if_else_finder(_, else_label,  join_label).
            
 
 
 
 
-/* THESE DEPENDENCY IS MADE IN CASE WE TAKE THE LEFT HAND SIDE DEPENDENCIES */
+// /* THESE DEPENDENCY IS MADE IN CASE WE TAKE THE LEFT HAND SIDE DEPENDENCIES */
 
-dependencies_else(else_label,j,v,v ) :-  else_paths(join_label, j),
-                                        belonging_if(else_label,j),
-                                        if_else_finder(_, else_label, join_label),
-                                        ( assign(j,v,d,_); assign(j,v,_,d) ),
-                                        candidate(l,d), reachable(j,l),
-                                        sink(_,v),c = count:{left_flag(_)}, c>0.
+// dependencies_else(else_label,j,v,v ) :-  else_paths(join_label, j),
+//                                         belonging_if(else_label,j),
+//                                         if_else_finder(_, else_label, join_label),
+//                                         ( assign(j,v,d,_); assign(j,v,_,d) ),
+//                                         candidate(l,d), reachable(j,l),
+//                                         sink(_,v),c = count:{left_flag(_)}, c>0.
 
 
 .decl most_external_if(i:label, e:label, j:label)
@@ -349,9 +357,9 @@ most_external_if(i,e,j) :- if(i,_,_,_), if(e,_,_,_), successive_if(i,_), success
 */
 
 .decl dependencies(i:label, l:label, v:var, d:var )
-.output dependencies(IO=stdout)
+//.output dependencies(IO=stdout)
 dependencies(i,l,v,d) :- dependencies_if(i,l,v,d).
-dependencies(i,l,v,d) :- dependencies_else(i,l,v,d).
+//dependencies(i,l,v,d) :- dependencies_else(i,l,v,d).
 
 
 .decl not_candidate(l:label, v:var)
