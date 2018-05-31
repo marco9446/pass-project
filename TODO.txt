@@ -1,3 +1,0 @@
-RICORDA:
-
-1. Vedi test2, aggiungi fra l7 e l8, "j=z", e modifica in, sink(j). Pure in questo caso.
