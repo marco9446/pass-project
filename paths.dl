@@ -1,3 +1,4 @@
+// don't remove this comment 
 .type label
 .type var
 .type opc = [x:number,c:number]
@@ -18,7 +19,7 @@
 
 
 .decl reachable(l:label, j:label)
-.output reachable(IO=stdout)
+// .output reachable(IO=stdout)
 reachable(X,Y)  :-  follows(X,Y).
 reachable(X,Y)  :-  reachable(X,Z), follows(Z,Y).
 
@@ -32,8 +33,15 @@ if_paths(l,j) :- if_paths(l,x), reachable(x,j).
 else_paths(l,j) :- join(l,_,j).
 else_paths(l,j) :- else_paths(l,x), reachable(x,j).
 
+
+.decl Labels(i:label )
+// .output Labels(IO=stdout)
+Labels(l) :- source(l,_).
+Labels(l) :- follows(l,_).
+Labels(l) :- follows(_,l).
+
 .decl candidate( l:label, x: var) 
-//.output candidate(IO=stdout)
+// .output candidate(IO=stdout)
 candidate(l, x) :- source( l ,x).
 candidate(l, x) :- assign(l,x,y,_), candidate(_,y).
 candidate(l, y) :- assign(l,_,y,_), candidate(_,y).
@@ -345,10 +353,27 @@ most_external_if(i,e,j) :- if(i,_,_,_), if(e,_,_,_), successive_if(i,lq1), succe
 */
 
 .decl dependencies(i:label, l:label, v:var, d:var )
-.output dependencies(IO=stdout)
+// .output dependencies(IO=stdout)
 dependencies(i,l,v,d) :- dependencies_if(i,l,v,d).
 dependencies(i,l,v,d) :- dependencies_else(i,l,v,d).
 
+
+.decl not_candidate(l:label, v:var)
+// .output not_candidate(IO=stdout)
+not_candidate(l, v) :- assign(l, v, _, _), !candidate(l,_).
+
+
+//FIXME: specify that the not_candidate line has to be after the candidate line
+.decl sanitize_no_if(l:label, v:var)
+// .output sanitize_no_if(IO=stdout)
+sanitize_no_if(l,b) :- !if(_,_,_,_), 
+                            sink(l, b), 
+                            candidate(s, b), 
+                            !assign(s, _, b, _), !assign(s, _, _, b),
+                            !not_candidate(_, b).
+
+
+// !assign(p, b, _, _), Labels(p) , !candidate(p,b),  !assign(s, _, b, _), !assign(s, _, _, b)
 
 /*
 First sanitize: for the non nested loop, to make it easier. for now
@@ -356,6 +381,8 @@ First sanitize: for the non nested loop, to make it easier. for now
 */
 .decl first_sanitize(l:label, d:var)
 .output first_sanitize(IO=stdout)
+
+first_sanitize(l,d) :- sanitize_no_if(l,d).
 
 /* 1a, 2a, 3a: CASES FOR RIGHT HAND SANITIZE */
 /* 1a- CASE:
@@ -450,7 +477,7 @@ new_reachable(l10,l6)  :- reachable(l10,l9), if_else_finder(l6,l9,_).
 
 
 .decl new_dependencies(l:label, d:var)
-.output new_dependencies(IO=stdout)
+// .output new_dependencies(IO=stdout)
 /*-----------------------------------------------------------------------------------------------------------
 /* IF CASE: RECURSIVE, FOR MORE THAN 2 NESTED IF-ELSE
 /*RIGHT-HAND-SIDE: Case */
@@ -488,6 +515,10 @@ new_dependencies(i,d) :-   most_external_if(i,e,j), counter1 = count:{external_i
                        counter2 = count:{left_flag(_)}, counter2<1. /*RIGHT-HAND-SIDE CASE*/
 
 
+/* 
+    TODO: Fai le new_dependcies come quelle sopra per il left hand side caseeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee
+    PD 
+*/ 
 
 
 /*-----------------------------------------------------------------------------------------------------------
@@ -584,5 +615,9 @@ second_sanitize(lp,d) :-    ( new_dependencies(lp,d);very_new_dependencies(lp,d)
 
 /*
     TODO: FOR LEFT-HAND-SIDE
+    RICORDA DI FARE IL LEFTT!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1
+    
 */
 
