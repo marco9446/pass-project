@@ -157,29 +157,34 @@ var_in_sink_NOT_assigned_in_a_path(if_label, l, v) :- var_in_sink_assigned_in_a_
     Data una variabile y, che ha un "path" in cui non viene assegnata", trova gli assignment precedenti
     ci servirà per poi prendere l'ultimo
 */
-.decl find_all_previous_ass_of_var_NOT_assigned( l:label, j:label)
-.output find_all_previous_ass_of_var_NOT_assigned(IO=stdout)
-find_all_previous_ass_of_var_NOT_assigned(l,j) :- var_in_sink_NOT_assigned_in_a_path(if_label, j, v),
-                                                ( assign(l,v,d,_);assign(l,v,_,d) ), candidate(ld,d), reachable(l,ld),
-                                                reachable(j,l).
+.decl find_all_previous_ass( l:label, j:label)
+//.output find_all_previous_ass(IO=stdout)
+find_all_previous_ass(l,j) :- var_in_sink_NOT_assigned_in_a_path(if_label, j, v),
+                                ( assign(l,v,d,_);assign(l,v,_,d) ), candidate(ld,d), reachable(l,ld),
+                                reachable(j,l).
 
-// .decl find_all_previous_ass_of_var_NOT_assigned_UNO( l:label, j:label)
-// .output find_all_previous_ass_of_var_NOT_assigned_UNO(IO=stdout)
-// find_all_previous_ass_of_var_NOT_assigned(l,j) :- var_in_sink_NOT_assigned_in_a_path(if_label, j, v),
-//                                                 ( assign(l,v,d,_);assign(l,v,_,d) ), candidate(ld,d), reachable(l,ld),
-//                                                 reachable(j,l).
+.decl find_previous( l:label, j:label)
+.output find_previous(IO=stdout)
+find_previous(l,j) :-   find_all_previous_ass(l,j),
+                        c = count:{find_all_previous_ass(_,j)}, c<2.
+                                                
+find_previous(l,j) :-   find_all_previous_ass(l,j),
+                        !find_NOT_previous(l,j),
+                        c = count:{find_all_previous_ass(_,j)}, c>1.
 
-
-// .decl find_all_previous_ass_of_var_NOT_assigned_DUE( l:label, j:label)
-// .output find_all_previous_ass_of_var_NOT_assigned_DUE(IO=stdout)
-
+.decl find_NOT_previous( l:label, j:label)
+//.output find_NOT_previous(IO=stdout)
+find_NOT_previous(l1,j1) :-     find_all_previous_ass(l1,j1),
+                                find_all_previous_ass(l2,j2),
+                                reachable(l2,l1),
+                                c = count:{find_all_previous_ass(_,j)}, c>1.
 
 
 /*
     Finds all the if_else_join labels of tbe if-else, that HAVE other if-else nested.
 */
 .decl external_if(i:label, e:label, j:label)
-.output external_if(IO=stdout)
+//.output external_if(IO=stdout)
 external_if(l1,e,j) :- if(l0,_,_,_), if(l1,_,_,_), reachable(l0,l1), if_else_finder(l1,e,j).
 
 
@@ -212,8 +217,8 @@ belonging_if(j1,l) :- assign(l,_,_,_), if(j1,_,_,_), reachable(l,j1), !NOT_belon
     the path of that if-else, it finds a dependency d
 */ 
 
-.decl dependencies_if(i:label, l:label, v:var, d:var ) 
-.output dependencies_if(IO=stdout)
+.decl dependencies(i:label, l:label, v:var, d:var ) 
+.output dependencies(IO=stdout)
 
 
 /*  ---------------------------------------------------------------------------------------
@@ -226,7 +231,7 @@ belonging_if(j1,l) :- assign(l,_,_,_), if(j1,_,_,_), reachable(l,j1), !NOT_belon
     (Being a 'candidate' before that assign means that: d is a source or something that had a source assigned before that label j).
     Therefore, put the dependcy in the corresponding if_label.
 */
-dependencies_if(belonging_label,j,v,d ) :- ( assign(j,v,d,_); assign(j,v,_,d) ),  /*There has to be an assign v = d ...
+dependencies(belonging_label,j,v,d ) :- ( assign(j,v,d,_); assign(j,v,_,d) ),  /*There has to be an assign v = d ...
                                                                             where v is the variable to sink and
                                                                             d the dependency
                                                                             */
@@ -240,126 +245,58 @@ dependencies_if(belonging_label,j,v,d ) :- ( assign(j,v,d,_); assign(j,v,_,d) ),
                                                                                  "right-hand" side mode.
                                                                                 */
 
+dependencies(belonging_label,j,v,v ) :- ( assign(j,v,d,_); assign(j,v,_,d) ),  /*There has to be an assign v = d ...
+                                                                            where v is the variable to sink and
+                                                                            d the dependency
+                                                                            */
+                                    belonging_if(belonging_label,j), /*Takes only the belonging if of the assign */
+                                    candidate(l,d), reachable(j,l) , /* The dependency d, which is a 'candidate'
+                                                                        can be wherever BUT it has to be 
+                                                                        reachable from the 'path_labels',
+                                                                        this mean  that has to be above */                                                                      
+
+                                    sink(_,v), c = count:{left_flag(_)}, c>0.   /*Has to be in the sink and we have to be in the
+                                                                                 "right-hand" side mode.
+                                                                                */
+
+
 
 // /*  There may a case where a variable v, requested in a sink method, is assigned to something else in a 
 //     path (eg. in the if path) but not assigned in another path (eg. the else path).
 //     If that variable was assigned to something else before the if-path, then the else path has to take it 
 //     into account. This function therefore sets this dependency.
 // */
-// dependencies_if(path_label,j,v,d ) :-   var_in_sink_NOT_assigned_in_a_path(path_label, j, v),
+dependencies(l,j,v,d ) :-   var_in_sink_NOT_assigned_in_a_path(_, j, v),
+                                        find_previous(l,j), ( assign(l,v,d,_);assign(l,v,_,d)), candidate(ld,d), reachable(l,ld),
+                                        sink(_,v), c = count:{left_flag(_)}, c<1.
 
-//                                         sink(_,v), c = count:{left_flag(_)}, c<1.
 
+// dependencies(l,j,v,v ) :-   var_in_sink_NOT_assigned_in_a_path(_, j, v),
+//                                         find_previous(l,j), ( assign(l,v,d,_);assign(l,v,_,d)), candidate(ld,d), reachable(l,ld),
+//                                         sink(_,v), c = count:{left_flag(_)}, c>0.
+
+dependencies(l,j,v,v ) :-   var_in_sink_NOT_assigned_in_a_path(_, j, v),
+                                        find_previous(l,j), ( assign(l,v,d,_);assign(l,v,_,d)), candidate(ld,d), reachable(l,ld),
+                                        sink(_,v), c = count:{left_flag(_)}, c>0.
 
 
 //TODO: SERVE FORSE IL CASO IN CUI LA X, SOURCE, VIENE SEMPRE ASSEGNATA A DELLE COSTANTI ?
 
 
-// /* 
-//     Used to create the dependcy of a variable from the candidates in an if 
-// */
-// dependencies_if(ls,j,v,d ) :-  if_paths(join_label, j), belonging_if(ls, j),
-//                                     if_paths(join_label, l), ( if(l,_,d,_);if(l,_,_,d)), 
-//                                     assign(j,v,_,_), candidate(l,d),  v!=d,
-//                                     sink(_,v), c = count:{left_flag(_)}, c<1.
+dependencies(if_label,j,v,v ) :- source_sink_NOT_assigned_in_a_path(if_label, j, v).
 
-// /*  ---------------------------------------------------------------------------------------
-// *   THESE  DEPENDENCy is MADE IN CASE WE TAKE THE LEFT HAND SIDE DEPENDENCIES
-// *   ---------------------------------------------------------------------------------------
-// */dependencies_if(if_label,j,v,v ) :-   if_paths(join_label, j), 
-//                                     if_else_finder(if_label, _, join_label),
-//                                     ( assign(j,v,d,_); assign(j,v,_,d) ), 
-//                                     candidate(l,d), reachable(j,l),
-//                                     sink(_,v), c = count:{left_flag(_)}, c>0.
-
-
-// /* 
-//     The following function is used in the case where there is a source, used at the end in a sink method.
-//     Given two paths, a and b, it may happen that x is assigned to something in a but not assigned in b, therefore
-//     in b has to be sanitized. The dependency is created of "itself".
-
-// */
-dependencies_if(if_label,j,v,v ) :- source_sink_NOT_assigned_in_a_path(if_label, j, v).
-
-
-
-// .decl dependencies_else(i:label, l:label, v:var, d:var )  //variable v in label l, depends on d.
-// //.output dependencies_else(IO=stdout)
-
-// /* THESE DEPENDENCIES ARE MADE IN CASE WE TAKE THE RIGHT HAND SIDE DEPENDENCIES */
-
-// dependencies_else(else_label,j,v,d ) :-  else_paths(join_label, j), reachable(j,else_label),
-//                                         //belonging_if(if_label,j),
-//                                         if_else_finder(if_label, else_label, join_label),
-//                                         ( assign(j,v,d,_); assign(j,v,_,d) ),
-//                                         candidate(l,d), reachable(j,l),
-//                                         var_in_sink_assigned_in_a_path(else_label, _, v),
-//                                         sink(_,v),c = count:{left_flag(_)}, c<1.
-
-// dependencies_else(else_label,j,v,d ) :-  else_paths(join_label, j),
-//                                         if_else_finder(_, else_label, join_label),
-//                                         else_paths(join_label, l),( if(l,_,d,_);if(l,_,_,d)), 
-//                                         assign(j,v,_,_), candidate(l,d),  v!=d,
-//                                         sink(_,v), c = count:{left_flag(_)}, c<1.
-
-
-//  dependencies_else(else_label,jf,v,v ) :-    else_paths(join_label, j), /*Given a path (join_label, l0...li).*/ 
-//                                         if_else_finder( _,else_label, join_label), 
-//                                         follows(jf, else_label), /*Used to put the dependency 
-//                                                                 on the label following the else_label
-//                                                                 */
-//                                         (assign(l,v,d,_);assign(l,v,_,d)), /* Given an assign... */
-//                                         reachable(j,l) ,    /*  That has still to be in the path, 
-//                                                                 but doesn't matter that it is after the if_label */
-//                                         ( assign(l1,v,d,_);assign(l1,v,_,d)), reachable(j,l1), /*  Where d is a candidate
-//                                                                             belonging to the path as well
-//                                                                         */
-//                                         candidate(lll,d), reachable(l1,lll),
-//                                         var_in_sink_NOT_assigned_in_a_path(else_label, _, v),
-//                                         /*
-//                                         Necesserly, the sanitize has to be made in that body at the end of the left
-//                                         hand side variable. 
-//                                         */
-//                                         sink(_,v), c = count:{left_flag(_)}, c<1.
-                              
-
-// dependencies_else(else_label,j,v,v ) :- source_sink_NOT_assigned_in_a_path(else_label, j, v),
-//                                     else_paths(join_label, j), belonging_if(else_label,j),
-//                                     if_else_finder(_, else_label,  join_label).
-           
-
-
-
-
-// /* THESE DEPENDENCY IS MADE IN CASE WE TAKE THE LEFT HAND SIDE DEPENDENCIES */
-
-// dependencies_else(else_label,j,v,v ) :-  else_paths(join_label, j),
-//                                         belonging_if(else_label,j),
-//                                         if_else_finder(_, else_label, join_label),
-//                                         ( assign(j,v,d,_); assign(j,v,_,d) ),
-//                                         candidate(l,d), reachable(j,l),
-//                                         sink(_,v),c = count:{left_flag(_)}, c>0.
 
 
 .decl most_external_if(i:label, e:label, j:label)
 .output most_external_if(IO=stdout)
 most_external_if(i,e,j) :- if(i,_,_,_), if(e,_,_,_), successive_if(i,_), successive_if(e,_), 
-                            !successive_if(_,i), !successive_if(_,e), if_else_finder(i,e,j).
+                            !successive_if(_,i), !successive_if(_,e), if_else_finder(i,e,j),
+                            c = count:{if(_,_,_,_)}, c>2.
+
+most_external_if(i,e,j) :- if(i,_,_,_), if(e,_,_,_), if_else_finder(i,e,j),
+                            c = count:{if(_,_,_,_)}, c<3.
 
 
-/*
-
-.decl external_if(i:label, e:label, j:label)  Label of the if-else if it's the case 
-.decl internal_if(i:label, e:label, j:label) 
-.decl belonging_if(j:label, l:label)  Label l belongs to if in label j 
-.decl dependencies_if(i:label, l:label, v:var, d:var ) 
-.decl dependencies_else(i:label, l:label, v:var, d:var )  /variable v in label l, depends on d.
-*/
-
-.decl dependencies(i:label, l:label, v:var, d:var )
-//.output dependencies(IO=stdout)
-dependencies(i,l,v,d) :- dependencies_if(i,l,v,d).
-//dependencies(i,l,v,d) :- dependencies_else(i,l,v,d).
 
 
 .decl not_candidate(l:label, v:var)
@@ -388,71 +325,7 @@ First sanitize: for the non nested loop, to make it easier. for now
 
 first_sanitize(l,d) :- sanitize_no_if(l,d).
 
-/* 1a, 2a, 3a: CASES FOR RIGHT HAND SANITIZE */
-/* 1a- CASE:
-    The dependency on variable d is in both if-else
-*/
-first_sanitize(i,d) :- internal_if(i,e,_), counter1 = count:{external_if(_,_,_)}, counter1 <1, 
-            /*Given an internal if, CASE WHERE THERE AREN'T NESTED LOOPS */
-                        dependencies(i,_,_,d), dependencies(e,_,_,d),
-                        counter2 = count:{left_flag(_)}, counter2<1. /*RIGHT-HAND-SIDE CASE*/
-/* 2a- CASE:
-    The dependency on variable d is in only in if
-*/
-first_sanitize(m,d) :- internal_if(i,e,_), counter1 = count:{external_if(_,_,_)}, counter1 <1, 
-            /*Given an internal if, CASE WHERE THERE AREN'T NESTED LOOPS */
-                        follows(m,i),
-                        dependencies(i,_,_,d), !dependencies(e,_,_,d),
-                        counter2 = count:{left_flag(_)}, counter2<1. /*RIGHT-HAND-SIDE CASE*/
-/* 3a- CASE:
-    The dependency on variable d is in only in else
-*/
-first_sanitize(m,d) :- internal_if(i,e,_), counter1 = count:{external_if(_,_,_)}, counter1 <1, 
-            /*Given an internal if, CASE WHERE THERE AREN'T NESTED LOOPS */
-                        follows(m,e),
-                        !dependencies(i,_,_,d), dependencies(e,_,_,d),
-                        counter2 = count:{left_flag(_)}, counter2<1. /*RIGHT-HAND-SIDE CASE*/
 
-
-/* 1b, 2b, 3b: CASES FOR LEFT HAND SANITIZE */
-/* 1b- CASE:
-    The dependency on variable d is in both if-else
-*/
-first_sanitize(j,d) :- internal_if(i,e,j), counter1 = count:{external_if(_,_,_)}, counter1 <1, 
-            /*Given an internal if, CASE WHERE THERE AREN'T NESTED LOOPS */
-                        dependencies(i,_,_,d), dependencies(e,_,_,d),
-                        counter2 = count:{left_flag(_)}, counter2>0. /*RIGHT-HAND-SIDE CASE*/
-/* 2a- CASE:
-    The dependency on variable d is in only in if
-*/
-first_sanitize(m,d) :- internal_if(i,e,_), counter1 = count:{external_if(_,_,_)}, counter1 <1, 
-            /*Given an internal if, CASE WHERE THERE AREN'T NESTED LOOPS */
-                        follows(m,l),
-                        dependencies(i,l,_,d), !dependencies(e,_,_,d),
-                        counter2 = count:{left_flag(_)}, counter2>0. /*RIGHT-HAND-SIDE CASE*/
-/* 3a- CASE:
-    The dependency on variable d is in only in else
-*/
-first_sanitize(m,d) :- internal_if(i,e,_), counter1 = count:{external_if(_,_,_)}, counter1 <1, 
-            /*Given an internal if, CASE WHERE THERE AREN'T NESTED LOOPS */
-                        follows(m,l),
-                        !dependencies(i,_,_,d), dependencies(e,l,_,d),
-                        counter2 = count:{left_flag(_)}, counter2>0. /*RIGHT-HAND-SIDE CASE*/
-
-
-/*  _______________________________________________________________________________________________________________
-/*  ---------------------------------------------------------------------------------------------------------------
-                                            FOR NESTED IF-ELSE
-       ----    ----    ----    ----    ----    ----    ----    ----    ----    ----    ----    ----    ----    ----
-*/
-/*
-
-.decl external_if(i:label, e:label, j:label)  Label of the if-else if it's the case 
-.decl internal_if(i:label, e:label, j:label) 
-.decl belonging_if(j:label, l:label)  Label l belongs to if in label j 
-.decl dependencies_if(i:label, l:label, v:var, d:var ) 
-.decl dependencies_else(i:label, l:label, v:var, d:var )  /variable v in label l, depends on d.
-*/
 .decl not_successive_if(i:label, j:label)
 //.output not_successive_if(IO=stdout)
 not_successive_if(i0,i2) :- if(i0,_,_,_), if(i1,_,_,_), if(i2,_,_,_),
@@ -464,15 +337,10 @@ not_successive_if(i0,i2) :- if(i0,_,_,_), if(i1,_,_,_), if(i2,_,_,_),
 
 
 .decl successive_if(i:label, j:label) /*The if in label i is the successive if of the if in label j*/
-.output successive_if(IO=stdout)
+//.output successive_if(IO=stdout)
 successive_if(i0,i2) :- if(i0,_,_,_), if(i2,_,_,_), reachable(i2,i0),
                         if_else_finder(i2,_,_), !not_successive_if(i0,i2).
 
-// .decl successive_if(i:label, j:label) /*The if in label i is the successive if of the if in label j*/
-// .output successive_if(IO=stdout)
-// successive_if(i0,i2) :- if(i0,_,_,_), !if(i1,_,_,_), if(i2,_,_,_), reachable(i2,i0),
-//                         reachable(i1,i0), !reachable(i0,i1), !reachable(i0,i2), 
-//                         if_else_finder(i2,_,_), !not_successive_if(i0,i2).
 
 .decl new_reachable(l:label, j:label)
 //.output new_reachable(IO=stdout)
@@ -481,112 +349,44 @@ new_reachable(l10,l6)  :- reachable(l10,l9), if_else_finder(l6,l9,_).
 
 
 .decl new_dependencies(l:label, d:var)
-// .output new_dependencies(IO=stdout)
+.output new_dependencies(IO=stdout)
 /*-----------------------------------------------------------------------------------------------------------
 /* IF CASE: RECURSIVE, FOR MORE THAN 2 NESTED IF-ELSE
 /*RIGHT-HAND-SIDE: Case */
 
 new_dependencies(ls,d) :- first_sanitize(ls,d).
 
-//1a: The dependency on variable d is in both if-else
-new_dependencies(i2,d) :-     external_if(i1,_,_), external_if(i2,e2,j2), successive_if(i1,i2),
-                             
-                            (   
-                                (  successive_if(i2,ls1), (new_dependencies(ls1,d); dependencies(ls1,_,_,d)) )
-                                ;
-                                ( new_dependencies(i2,d); dependencies(i2,_,_,d))
-                            ),
-                            
-                            (   
-                                ( successive_if(e2,ls2), (new_dependencies(ls2,d); dependencies(ls2,_,_,d)))
-                                ;
-                                ( new_dependencies(e2,d); dependencies(e2,_,_,d))
-                            ),
-                             counter2 = count:{left_flag(_)}, counter2<1. /*RIGHT-HAND-SIDE CASE*/
-
-new_dependencies(i,d) :-   most_external_if(i,e,j), counter1 = count:{external_if(_,_,_)}, counter1 >0,
-                            (   
-                                (  successive_if(i,ls1), (new_dependencies(ls1,d); dependencies(ls1,_,_,d)) )
-                                ;
-                                ( new_dependencies(i,d); dependencies(i,_,_,d))
-                            ),
-                            
-                            (   
-                                ( successive_if(e,ls2), (new_dependencies(ls2,d); dependencies(ls2,_,_,d)))
-                                ;
-                                ( new_dependencies(e,d); dependencies(e,_,_,d))
-                            ),
-                       counter2 = count:{left_flag(_)}, counter2<1. /*RIGHT-HAND-SIDE CASE*/
-
-
-/* 
-    TODO: Fai le new_dependcies come quelle sopra per il left hand side caseeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee
-    PD 
-*/ 
-
-
-/*-----------------------------------------------------------------------------------------------------------
-/* IF CASE
-/*RIGHT-HAND-SIDE: Case when we arrive at the "last" level, when the external if has only the internal if inside*/
-new_dependencies(i2,d) :-    external_if(i1,_,_), internal_if(i2,e2,_), successive_if(i1,i2),
-                            dependencies(i2,_,_,d), dependencies(e2,_,_,d),
+ 
+//Versione semplificata di quello sopra, nel caso in cui non dovesse funzionre .
+new_dependencies(i2,d) :-   successive_if(i1,i2),(new_dependencies(i2,d); dependencies(i2,_,_,d)),
+                            if_else_finder(i2,e2,_),(new_dependencies(e2,d); dependencies(e2,_,_,d)),
                             counter2 = count:{left_flag(_)}, counter2<1. /*RIGHT-HAND-SIDE CASE*/
 
-new_dependencies(ls,d) :-    external_if(i1,_,_), internal_if(i2,e2,_), successive_if(i1,i2), follows(ls,i2),
-                            dependencies(i2,_,_,d), !dependencies(e2,_,_,d),
+/*Caso con un solo if-else */
+new_dependencies(i2,d) :-   if_else_finder(i2,e2,_), 
+                            dependencies(i2,_,_,d) , dependencies(e2,_,_,d),
+                            counter1 = count:{if(_,_,_,_)}, counter1 <3,
                             counter2 = count:{left_flag(_)}, counter2<1. /*RIGHT-HAND-SIDE CASE*/
 
 
-new_dependencies(ls,d) :-    external_if(i1,_,_), internal_if(i2,e2,_), successive_if(i1,i2), follows(ls,e2),
-                            !dependencies(i2,_,_,d), dependencies(e2,_,_,d),
+new_dependencies(i2,d) :-   successive_if(i1,i2),(new_dependencies(i2,d); dependencies(i2,_,_,d)),
+                            if_else_finder(i2,e2,_),(new_dependencies(e2,d); dependencies(e2,_,_,d)),
+                            counter2 = count:{left_flag(_)}, counter2>0. /*LEFT-HAND-SIDE CASE*/
+ 
+ /*Caso con un solo if-else */
+new_dependencies(i2,d) :-   successive_if(i1,i2),(new_dependencies(i2,d); dependencies(i2,_,_,d)),
+                            if_else_finder(i2,e2,_),(new_dependencies(e2,d); dependencies(e2,_,_,d)),
+                            counter1 = count:{if(_,_,_,_)}, counter1 <3,
+                            counter2 = count:{left_flag(_)}, counter2>0. /*LEFT-HAND-SIDE CASE*/
+ 
+ 
+ new_dependencies(i,d) :-    most_external_if(i,e,j), ( new_dependencies(i,d); dependencies(i,_,_,d) ),
+                            ( new_dependencies(e,d); dependencies(e,_,_,d) ),
                             counter2 = count:{left_flag(_)}, counter2<1. /*RIGHT-HAND-SIDE CASE*/
 
-/*LEFT-HAND-SIDE: Case when we arrive at the "last" level, when the external if has only the internal if inside*/
-new_dependencies(j2,d) :-    external_if(i1,_,_), internal_if(i2,e2,j2), successive_if(i1,i2),
-                            dependencies(i2,_,_,d), dependencies(e2,_,_,d),
+new_dependencies(i,d) :-    most_external_if(i,e,j), ( new_dependencies(i,d); dependencies(i,_,_,d) ),
+                            ( new_dependencies(e,d); dependencies(e,_,_,d) ),
                             counter2 = count:{left_flag(_)}, counter2>0. /*LEFT-HAND-SIDE CASE*/
-
-new_dependencies(ls,d) :-    external_if(i1,_,_), internal_if(i2,e2,_), successive_if(i1,i2),
-                            dependencies(i2,l,_,d), !dependencies(e2,_,_,d), follows(ls,l),
-                            counter2 = count:{left_flag(_)}, counter2>0. /*LEFT-HAND-SIDE CASE*/
-
-
-new_dependencies(ls,d) :-    external_if(i1,_,_), internal_if(i2,e2,_), successive_if(i1,i2),
-                            !dependencies(i2,_,_,d), dependencies(e2,l,_,d), follows(ls,l),
-                            counter2 = count:{left_flag(_)}, counter2>0. /*LEFT-HAND-SIDE CASE*/
-
-/*-----------------------------------------------------------------------------------------------------------
-/* ELSE CASE
-*/
-/*RIGHT-HAND-SIDE: */
-new_dependencies(i2,d) :-    external_if(_,e1,_), internal_if(i2,e2,_), successive_if(e1,i2),
-                            dependencies(i2,_,_,d), dependencies(e2,_,_,d),
-                            counter2 = count:{left_flag(_)}, counter2<1. /*RIGHT-HAND-SIDE CASE*/
-
-new_dependencies(ls,d) :-    external_if(_,e1,_), internal_if(i2,e2,_), successive_if(e1,i2),follows(ls,i2),
-                            dependencies(i2,_,_,d), !dependencies(e2,_,_,d),
-                            counter2 = count:{left_flag(_)}, counter2<1. /*RIGHT-HAND-SIDE CASE*/
-
-
-new_dependencies(ls,d) :-    external_if(_,e1,_), internal_if(i2,e2,_),
-                            successive_if(e1,i2),follows(ls,e2),
-                            !dependencies(i2,_,_,d), dependencies(e2,_,_,d),
-                            counter2 = count:{left_flag(_)}, counter2<1. /*RIGHT-HAND-SIDE CASE*/
-
-/*LEFT-HAND-SIDE: Case when we arrive at the "last" level, when the external if has only the internal if inside*/
-new_dependencies(j2,d) :-    external_if(_,e1,_), internal_if(i2,e2,j2), successive_if(e1,i2),
-                            dependencies(i2,_,_,d), dependencies(e2,_,_,d),
-                            counter2 = count:{left_flag(_)}, counter2>0. /*LEFT-HAND-SIDE CASE*/
-
-new_dependencies(ls,d) :-    external_if(_,e1,_), internal_if(i2,e2,_), successive_if(e1,i2),
-                            dependencies(i2,l,_,d), !dependencies(e2,_,_,d), follows(ls,l),
-                            counter2 = count:{left_flag(_)}, counter2>0. /*LEFT-HAND-SIDE CASE*/
-
-
-new_dependencies(ls,d) :-    external_if(_,e1,_), internal_if(i2,e2,_), successive_if(e1,i2),
-                            !dependencies(i2,_,_,d), dependencies(e2,l,_,d), follows(ls,l),
-                            counter2 = count:{left_flag(_)}, counter2>0. /*LEFT-HAND-SIDE CASE*/
-
 
 
 
@@ -596,15 +396,19 @@ not_final(l1,d, l) :-   ( new_dependencies(l,d); very_new_dependencies(l,d) ),
                     ( new_dependencies(l1,d);very_new_dependencies(l1,d) ), new_reachable(l1,l),
                     counter2 = count:{left_flag(_)}, counter2<1.
 
-not_final(l,d, l1) :-   ( new_dependencies(l,d); very_new_dependencies(l,d) ),
+not_final(l, d, l1) :-   ( new_dependencies(l,d); very_new_dependencies(l,d) ),
                     ( new_dependencies(l1,d);very_new_dependencies(l1,d) ), new_reachable(l1,l),
                     counter2 = count:{left_flag(_)}, counter2>0.
+
 
 
 .decl very_new_dependencies(l:label, d:var) /*Prende dependencies e ricopia mettendo il sanitize nel label subito dopo */
 .output very_new_dependencies(IO=stdout)
 
 very_new_dependencies(l,d) :- dependencies(q,_,_,d), if(q,l,_,_), counter2 = count:{left_flag(_)}, counter2<1.
+very_new_dependencies(ls,d) :- dependencies(_,q,d,_), var_in_sink_NOT_assigned_in_a_path(_,q,_),
+                                follows(ls,q),counter2 = count:{left_flag(_)}, counter2<1.
+
 very_new_dependencies(l,d) :- dependencies(_,q,_,d), follows(l,q), counter2 = count:{left_flag(_)}, counter2>0.
 
 /*
@@ -615,7 +419,16 @@ very_new_dependencies(l,d) :- dependencies(_,q,_,d), follows(l,q), counter2 = co
 .output second_sanitize(IO=stdout)
 
 second_sanitize(lp,d) :-    ( new_dependencies(lp,d);very_new_dependencies(lp,d) ),
-                            !not_final(lp,d,_).
+                            !not_final(lp,d,_),
+                            counter2 = count:{left_flag(_)}, counter2<1.
+
+second_sanitize(ls,d) :-    new_dependencies(lp,d), if_else_finder(lp,_,ls),
+                            !not_final(_,d,lp),
+                            counter2 = count:{left_flag(_)}, counter2>0.
+
+second_sanitize(lp,d) :-    dependencies(_,ls,_,d), follows(lp,ls),
+                            !not_final(_,d,lp),
+                            counter2 = count:{left_flag(_)}, counter2>0.
 
 /*
     TODO: FOR LEFT-HAND-SIDE

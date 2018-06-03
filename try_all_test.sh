@@ -22,7 +22,7 @@ do
 
     remove_temp_file;
     cat  $path  $MAIN_FILE  >> $TEMP_FILE
-    souffle $TEMP_FILE | sed -n "/${FUNCTION_TO_SHOW}/,/---------------/p" 
+    souffle -w $TEMP_FILE | sed -n "/${FUNCTION_TO_SHOW}/,/---------------/p" 
     grep "expected" $path
     remove_temp_file;
     echo ""
