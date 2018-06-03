@@ -27,4 +27,4 @@ assign("l4","b","x","0").
 assign("l5","c","a","b").
 assign("l6","b","y","0").
 
-//expected output: ("l3","x"), ("l3","y").
+//expected output: ("l3","x"), ("l3","y") or ("l7","c"), ("l8","b").
