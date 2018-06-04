@@ -71,5 +71,5 @@ assign("l13","w","z","s").
 if("l5","l6","t","0").
 if("l10","l11","t","0").
 
-//expected output: ("l5”,”x”), ("l5”,”y”), ("l5”,”z”), ("l5”,”s”).
+//expected output: ("l5","x"), ("l5","y"), ("l5","z"), ("l5","s").
 
