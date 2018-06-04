@@ -44,4 +44,4 @@ if("l7","l8","z","0").
 
 
 
-//expected output: ("l10","x"),("l10","y") oppure ("l5","y"),("l8","x").
+//expected output: ("l10","x"),("l10","y")

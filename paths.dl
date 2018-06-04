@@ -43,16 +43,23 @@ Labels(l) :- follows(_,l).
 .decl candidate( l:label, x: var) 
 .output candidate(IO=stdout)
 candidate(l, x) :- source( l ,x).
-candidate(l, x) :- assign(l,x,y,_), candidate(_,y), reachable(l,q).
-candidate(l, x) :- assign(l,x,_,z), candidate(_,z), reachable(l,q).
+candidate(l, x) :- assign(l,x,y,_), candidate(q,y), reachable(l,q).
+candidate(l, x) :- assign(l,x,_,z), candidate(q,z), reachable(l,q).
 candidate(l, x) :- ( if(l,_,x,_);if(l,_,_,x)), candidate(q,x), reachable(l,q).
+
+
+.decl sinkable(l:label, v:var)
+.output sinkable(IO=stdout)
+sinkable(l, v) :- sink(l, v).
+sinkable(l, x) :- assign(l,x,d1,d2), sinkable(q, x), reachable(q, l), 
+                (candidate(ld1, d1),reachable(l,ld1) ; candidate(ld2, d2), reachable(l,ld2)).
 
 
 /*
     Return three labels corresponding to the location of the if-else-join of each if-else.
 */
 .decl if_else_finder(i:label, e:label, j:label) 
-.output if_else_finder(IO=stdout)
+// .output if_else_finder(IO=stdout)
 if_else_finder(i,e,j) :- if(i, _ ,x,y), if(e, _ ,x,y), join(j, ij ,ej), 
                 !follows(e, ij), 
                 follows(j, ej), 
@@ -70,8 +77,16 @@ if_else_finder(i,e,j) :- if(i, _ ,x,y), if(e, _ ,x,y), join(j, ij ,ej),
     in a sink, then do it on the right hand side varaibles.
 */
 .decl left_flag(l:symbol)
-//.output left_flag(IO=stdout)
+.output left_flag(IO=stdout)
 left_flag(flag) :- flag="left", assign(_,_,a,b), candidate(_,a), candidate(_,b), !sink(_,a), !sink(_,b).
+left_flag(flag) :- flag="left", source_sink_NOT_assigned_in_a_path(if_label, j, v),
+                            ((if_else_finder(if_label,_,join_label));(if_else_finder(fuck,if_label,join_label)) ),
+                            follows(ls,join_label),
+                            find_closest_assign_of_var_in_if(_  ,if_label,v1), 
+
+                            (assign(la,v,d1,_); assign(la,v, _, d1)), sinkable(_, s), 
+                            !find_closest_assign_of_var_in_assignment(_, la, d1).
+
 
 
 .decl right_flag(l:symbol)
@@ -93,7 +108,7 @@ to_check( x) :- sink( _ ,x).
     This rule will be used later to find the opposite.
 */
 .decl source_sink_assigned_in_a_path(i:label, l:label, v:var)
-.output source_sink_assigned_in_a_path(IO=stdout)
+// .output source_sink_assigned_in_a_path(IO=stdout)
 
 source_sink_assigned_in_a_path(if_label,j,v ) :- source(_,v), sink(_,v), if_paths(join_label, j),
                                         if_else_finder(if_label, _, join_label),
@@ -126,7 +141,7 @@ source_sink_NOT_assigned_in_a_path(else_label, l, v) :- source(_,v), sink(_,v), 
     in another path.
 */
 .decl var_in_sink_assigned_in_a_path(i:label, l:label, v:var)
-.output var_in_sink_assigned_in_a_path(IO=stdout)
+// .output var_in_sink_assigned_in_a_path(IO=stdout)
 
 var_in_sink_assigned_in_a_path(if_label,j,v ) :- ( assign(j,v,d,_); assign(j,v,_,d) ),
                                                     sink(_,v),
@@ -162,7 +177,7 @@ find_all_previous_ass(l,j) :- var_in_sink_NOT_assigned_in_a_path(if_label, j, v)
                                 reachable(j,l).
 
 .decl find_previous( l:label, j:label)
-.output find_previous(IO=stdout)
+// .output find_previous(IO=stdout)
 find_previous(l,j) :-   find_all_previous_ass(l,j),
                         c = count:{find_all_previous_ass(_,j)}, c<2.
                                                 
@@ -204,7 +219,7 @@ NOT_belonging_if(j1,l) :- assign(l,_,_,_), if(j1,_,_,_), if(j2,_,_,_), reachable
                         !reachable(j1,j2), reachable(j2,j1).
 
 .decl belonging_if(j:label, l:label) /* Label l belongs to if in label j */
-.output belonging_if(IO=stdout)
+// .output belonging_if(IO=stdout)
 belonging_if(j1,l) :- assign(l,_,_,_), if(j1,_,_,_), reachable(l,j1), !NOT_belonging_if(j1,l).
 
 
@@ -220,16 +235,21 @@ belonging_if(j1,l) :- assign(l,_,_,_), if(j1,_,_,_), reachable(l,j1), !NOT_belon
 .decl find_all_assign_of_var_in_assignment(i:label, j:label, v:var) //Assignment of variable v in label j, has an assignment in label i
 .output find_all_assign_of_var_in_assignment(IO=stdout)
 
-find_all_assign_of_var_in_assignment(i,j,d1) :- ( assign(j,_,d1,_); assign(j,_,_,d1)), assign(i,d1,_,_), reachable(i,j).
-find_all_assign_of_var_in_assignment(i,j,d1) :- ( assign(j,_,d1,_); assign(j,_,_,d1)), source(i,d1), reachable(i,j).
+find_all_assign_of_var_in_assignment(i,j,d1) :- ( assign(j,_,d1,_); assign(j,_,_,d1)), assign(i,d1,_,_), reachable(j,i).
+find_all_assign_of_var_in_assignment(i,j,d1) :- ( assign(j,_,d1,_); assign(j,_,_,d1)), source(i,d1), reachable(j,i).
 
-.decl find_closest_assign_of_var_in_assignment(i:label, j:label, v:var)
-.output find_closest_assign_of_var_in_assignment(IO=stdout)
+.decl find_not_assign_of_var_in_assignment(i:label, j:label, v:var)
+.output find_not_assign_of_var_in_assignment(IO=stdout)
 
-find_closest_assign_of_var_in_assignment(i1,j, v) :-    find_all_assign_of_var_in_assignment(i1,j,v),
+find_not_assign_of_var_in_assignment(i1,j, v) :-    find_all_assign_of_var_in_assignment(i1,j,v),
                                                     find_all_assign_of_var_in_assignment(i2,j,v),
                                                     reachable(i2,i1).
 
+
+.decl find_closest_assign_of_var_in_assignment(i:label, j:label, v:var)
+.output find_closest_assign_of_var_in_assignment(IO=stdout)
+find_closest_assign_of_var_in_assignment (i, j, v) :- find_all_assign_of_var_in_assignment(i, j, v),
+                                                    !find_not_assign_of_var_in_assignment(i, j, v).
 
 
 .decl assign_candidate(l:label)
@@ -316,18 +336,68 @@ dependencies(l,j,v,v ) :-   var_in_sink_NOT_assigned_in_a_path(_, j, v),
 dependencies(if_label,j,v,v ) :- source_sink_NOT_assigned_in_a_path(if_label, j, v),
                                     !find_closest_assign_of_var_in_if(_,if_label,_).
 
+// dependencies(if_label,j,v,v ) :- source_sink_NOT_assigned_in_a_path(if_label, j, v),
+//                                 find_closest_assign_of_var_in_if(_,if_label,_), 
 
-dependencies(if_label, la, v, d1) :-  find_closest_assign_of_var_in_if(_,if_label,d), 
-                                    (assign(la,v,d1,_); assign(la, v, _, d1)), belonging_if(if_label, la),
-                                    find_closest_assign_of_var_in_assignment(lass, la, d1), sink(_, d1),
-                                    !assign_constant(lass).
+
+// dependencies(if_label,if_label,x,x ) :-    source_sink_NOT_assigned_in_a_path(if_label, j, v),
+//                                     find_closest_assign_of_var_in_if(_,if_label,x), 
+//                                     assign(ll,v,_,_), belonging_if(if_label,ll), sinkable(_, v).
+
+// dependencies(if_label,if_label,v,d1 ) :-    source_sink_NOT_assigned_in_a_path(if_label, j, v),
+//                                     find_closest_assign_of_var_in_if(_,if_label,_),
+//                                     ( assign(ll,v,d1,_);assign(ll,v,_,d1) ), belonging_if(if_label,ll).
+
+
+dependencies(if_label,j, v, d1),
+dependencies(if_label,j, v, v1),
+dependencies(if_label,j, v, v) :- source_sink_NOT_assigned_in_a_path(if_label, j, v),
+                            find_closest_assign_of_var_in_if(_  ,if_label,v1), 
+                            (assign(la,s,d1,_); assign(la, s, _, d1)), sinkable(_, s), 
+                            find_closest_assign_of_var_in_assignment(lc, la, d1), 
+
+                            !assign_constant(lc).
+
+dependencies(ls,ls, v, v) :- source_sink_NOT_assigned_in_a_path(if_label, j, v),
+                            ((if_else_finder(if_label,_,join_label));(if_else_finder(fuck,if_label,join_label)) ),
+                            follows(join_label,ls),
+                            find_closest_assign_of_var_in_if(_  ,if_label,v1), 
+                            (assign(la,v,d1,_); assign(la,v, _, d1)), sinkable(_, s), 
+                            !find_closest_assign_of_var_in_assignment(_, la, d1).
+
+
+dependencies(if_label,j, v, v),
+dependencies(join_label,j, v, s) :- source_sink_NOT_assigned_in_a_path(if_label, j, v),
+                            if_else_finder(if_label,_,join_label), follows(ls,join_label),
+                            find_closest_assign_of_var_in_if(_  ,if_label,v1), 
+                            
+                            (assign(la,s,d1,_); assign(la, s, _, d1)), sinkable(_, s), !sinkable(_,d1),
+                            !find_closest_assign_of_var_in_assignment(_, la, d1).
+
+
+
+
+
+// dependencies(if_label, la, v, d1),
+// dependencies(if_label, la, v, d1)  :-  !source_sink_NOT_assigned_in_a_path(if_label,_,_),
+//                                         find_closest_assign_of_var_in_if(_,if_label,d), 
+//                                     (assign(la,v,d1,_); assign(la, v, _, d1)), 
+//                                     belonging_if(if_label, la),
+//                                     find_closest_assign_of_var_in_assignment(lass, la, d1), 
+//                                     sinkable(_, d1),
+//                                     !assign_constant(lass).
 
 dependencies(if_label, lq1, v, d),
-dependencies(else_label, lq2, v, d) :-  find_closest_assign_of_var_in_if(_,if_label,d), 
-                                    assign(la,v,d1,_), assign(lb, v, _, d1), belonging_if(if_label, la),
-                                    if_else_finder(if_label, else_label,_), belonging_if(else_label, lb),
-                                    assign_constant(la), assign_constant(lb), if(if_label, lq1,_ , _),if(else_label, lq2, _, _).
+dependencies(else_label, lq2, v, d) :- !source_sink_NOT_assigned_in_a_path(if_label,_,_), 
+                                    find_closest_assign_of_var_in_if(_,if_label,d), 
+                                    assign(la,v,d1,_), assign(lb, v, _, d1), 
+                                    belonging_if(if_label, la), belonging_if(else_label, lb),
+                                    if_else_finder(if_label, else_label,_), 
+                                    assign_constant(la), assign_constant(lb), 
+                                    if(if_label, lq1,_ , _),if(else_label, lq2, _, _).
                                     
+
+
 
 .decl most_external_if(i:label, e:label, j:label)
 .output most_external_if(IO=stdout)
@@ -393,7 +463,7 @@ new_reachable(l10,l6)  :- reachable(l10,l9), if_else_finder(l6,l9,_).
 
 
 .decl find_all_assign_of_var_in_if(l:label, j:label, v:var)
-.output find_all_assign_of_var_in_if(IO=stdout)
+// .output find_all_assign_of_var_in_if(IO=stdout)
 
 find_all_assign_of_var_in_if(l1,i,v1) :- ( if(i,_,v1,_);(if(i,_,_,v1))), reachable(i,l1),
                                             (
@@ -407,7 +477,7 @@ find_all_assign_of_var_in_if(l1,i,v1) :- ( if(i,_,v1,_);(if(i,_,_,v1))), reachab
 
 
 .decl NOT_find_all_assign_of_var_in_if(l:label, j:label, v:var)
-.output NOT_find_all_assign_of_var_in_if(IO=stdout)
+// .output NOT_find_all_assign_of_var_in_if(IO=stdout)
 NOT_find_all_assign_of_var_in_if(l1,j1,v1) :- find_all_assign_of_var_in_if(l1,j1,v1), find_all_assign_of_var_in_if(l2,j2,v1),
                                             reachable(l2,l1).
 
@@ -478,7 +548,7 @@ new_dependencies(i,d) :-    most_external_if(i,e,j), !find_closest_assign_of_var
 
 
 .decl not_final(l:label, d:var, j:label)
-.output not_final(IO=stdout)
+// .output not_final(IO=stdout)
 not_final(l1,d, l) :-   ( new_dependencies(l,d); very_new_dependencies(l,d) ),
                     ( new_dependencies(l1,d);very_new_dependencies(l1,d) ), new_reachable(l1,l),
                     counter2 = count:{left_flag(_)}, counter2<1.
