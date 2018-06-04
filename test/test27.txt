@@ -1,22 +1,19 @@
 //L1:  x:=source();
 //L2:  y:=source();
-//L3:  z:=source();
-//L4: if(v>0){
-//L5:   u:=x;
-//L6: }
-//L7: else{
-//L8:   u:=z;
-//L9: }
-//L10: sink(x);
-//L11: sink(u);
-
+//L3:  x=3
+//L4:  if(v>0){
+//L5:    u:=x+y;
+//L6:  }
+//L7:  else{
+//L8:    u:=x;
+//L9:  }
+//L10: sink(u);
 
 source("l1","x").
 source("l2","y").
 source("l3","z").
 
-sink("l10","x").
-sink("l11","u").
+sink("l10","u").
 
 follows("l2","l1").
 follows("l3","l2").
@@ -28,17 +25,17 @@ follows("l8","l7").
 follows("l9","l8").
 follows("l10","l6").
 follows("l10","l9").
-follows("l11","l10").
 
 join("l10","l6","l9").	
 	
-assign("l5","u","x","0").
-assign("l8","u","z","0").
+assign("l3","x","3","0").
+assign("l5","u","x","y").
+assign("l8","u","x","0").
 
 if("l4","l5","v","0").	
 if("l7","l8","v","0").	
 
 
 
-// il loro exp out era: ("l4","x"),("l11","u")
-//expected output: ("l4","x"),("l11","u") or ("l4","x"),("l8","z").
+
+//expected output:("l5","y").

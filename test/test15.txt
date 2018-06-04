@@ -60,5 +60,5 @@ if("l11","l12","z","0").
 if("l14","l15","z","0").
 
 
-
-//expected output: ("l7","x"), ("l17","x") oppure ("l7","x"), ("l11","x").
+// il loro exp out era: ("l7","x"), ("l17","x")
+//expected output: ("l7","x"), ("l11","x").

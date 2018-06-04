@@ -62,4 +62,4 @@ assign("l9","a","y","x").
 assign("l13","a","x","0").
 assign("l17","a","y","0").
 
-//expected output: ("l9","x"), ("l13","x") or ("l10","a"), ("l14","a").
+//expected output: ("l9","x"), ("l13","x").

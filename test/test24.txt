@@ -38,4 +38,4 @@ assign("l8","b","y","x").
 if("l3","l4","t","0").	
 if("l7","l8","t","0").	
 
-//expected output:("l3","x"), ("l3","y") or ("l10","b"), ("l5","a").
+//expected output: ("l10","b"), ("l5","a").

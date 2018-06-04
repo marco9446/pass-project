@@ -2,7 +2,7 @@
 //L1: x:=source();		
 //L2: y:=source();
 //L3: a:=x;
-//L4: b:=x;
+//L4: b:=3;
 //L5: c:=a+b;
 //L6: b:=y;
 //L7: sink(c);		
@@ -23,8 +23,8 @@ follows("l7","l6").
 follows("l8","l7").
 
 assign("l3","a","x","0").
-assign("l4","b","x","0").
+assign("l4","b","3","0").
 assign("l5","c","a","b").
-assign("l6","b","y","0").
+assign("l6","b","3","0").
 
-//expected output:  ("l7","c"), ("l8","b").
+//expected output: ("l8","b"), ("l7","c").
