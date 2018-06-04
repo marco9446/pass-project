@@ -43,10 +43,8 @@ Labels(l) :- follows(_,l).
 .decl candidate( l:label, x: var) 
 .output candidate(IO=stdout)
 candidate(l, x) :- source( l ,x).
-candidate(l, x) :- assign(l,x,y,_), candidate(_,y).
-candidate(l, y) :- assign(l,_,y,_), candidate(_,y).
-candidate(l, x) :- assign(l,x,_,z), candidate(_,z).
-candidate(l, z) :- assign(l,_,_,z), candidate(_,z).
+candidate(l, x) :- assign(l,x,y,_), candidate(_,y), reachable(l,q).
+candidate(l, x) :- assign(l,x,_,z), candidate(_,z), reachable(l,q).
 candidate(l, x) :- ( if(l,_,x,_);if(l,_,_,x)), candidate(q,x), reachable(l,q).
 
 
@@ -217,6 +215,35 @@ belonging_if(j1,l) :- assign(l,_,_,_), if(j1,_,_,_), reachable(l,j1), !NOT_belon
     the path of that if-else, it finds a dependency d
 */ 
 
+/*Per trovare tutti i previous assignments e sources delle variabili sia s sinistra che a destra dell assign */
+
+.decl find_all_assign_of_var_in_assignment(i:label, j:label, v:var) //Assignment of variable v in label j, has an assignment in label i
+.output find_all_assign_of_var_in_assignment(IO=stdout)
+
+find_all_assign_of_var_in_assignment(i,j,d1) :- ( assign(j,_,d1,_); assign(j,_,_,d1)), assign(i,d1,_,_), reachable(i,j).
+find_all_assign_of_var_in_assignment(i,j,d1) :- ( assign(j,_,d1,_); assign(j,_,_,d1)), source(i,d1), reachable(i,j).
+
+.decl find_closest_assign_of_var_in_assignment(i:label, j:label, v:var)
+.output find_closest_assign_of_var_in_assignment(IO=stdout)
+
+find_closest_assign_of_var_in_assignment(i1,j, v) :-    find_all_assign_of_var_in_assignment(i1,j,v),
+                                                    find_all_assign_of_var_in_assignment(i2,j,v),
+                                                    reachable(i2,i1).
+
+
+
+.decl assign_candidate(l:label)
+.output assign_candidate(IO=stdout)
+
+assign_candidate(l) :- assign(l,v,d1,d2), ((candidate(ld1,d1),reachable(l,ld1));(candidate(ld2,d2), reachable(l,ld2))).
+
+
+.decl assign_constant(l:label)
+.output assign_constant(IO=stdout)
+
+assign_constant(l) :- assign(l,v,d1,d2), !assign_candidate(l).
+
+
 .decl dependencies(i:label, l:label, v:var, d:var ) 
 .output dependencies(IO=stdout)
 
@@ -241,9 +268,10 @@ dependencies(belonging_label,j,v,d ) :- ( assign(j,v,d,_); assign(j,v,_,d) ),  /
                                                                         reachable from the 'path_labels',
                                                                         this mean  that has to be above */                                                                      
 
-                                    sink(_,v), c = count:{left_flag(_)}, c<1.   /*Has to be in the sink and we have to be in the
+                                    sink(_,v), c = count:{left_flag(_)}, c<1,   /*Has to be in the sink and we have to be in the
                                                                                  "right-hand" side mode.
                                                                                 */
+                                    !find_closest_assign_of_var_in_if(_,belonging_label,_).
 
 dependencies(belonging_label,j,v,v ) :- ( assign(j,v,d,_); assign(j,v,_,d) ),  /*There has to be an assign v = d ...
                                                                             where v is the variable to sink and
@@ -255,9 +283,10 @@ dependencies(belonging_label,j,v,v ) :- ( assign(j,v,d,_); assign(j,v,_,d) ),  /
                                                                         reachable from the 'path_labels',
                                                                         this mean  that has to be above */                                                                      
 
-                                    sink(_,v), c = count:{left_flag(_)}, c>0.   /*Has to be in the sink and we have to be in the
+                                    sink(_,v), c = count:{left_flag(_)}, c>0,   /*Has to be in the sink and we have to be in the
                                                                                  "right-hand" side mode.
                                                                                 */
+                                    !find_closest_assign_of_var_in_if(_,belonging_label,_).
 
 
 
@@ -267,8 +296,9 @@ dependencies(belonging_label,j,v,v ) :- ( assign(j,v,d,_); assign(j,v,_,d) ),  /
 //     into account. This function therefore sets this dependency.
 // */
 dependencies(l,j,v,d ) :-   var_in_sink_NOT_assigned_in_a_path(_, j, v),
-                                        find_previous(l,j), ( assign(l,v,d,_);assign(l,v,_,d)), candidate(ld,d), reachable(l,ld),
-                                        sink(_,v), c = count:{left_flag(_)}, c<1.
+                            find_previous(l,j), ( assign(l,v,d,_);assign(l,v,_,d)), 
+                            candidate(ld,d), reachable(l,ld),
+                            sink(_,v), c = count:{left_flag(_)}, c<1.
 
 
 // dependencies(l,j,v,v ) :-   var_in_sink_NOT_assigned_in_a_path(_, j, v),
@@ -283,9 +313,21 @@ dependencies(l,j,v,v ) :-   var_in_sink_NOT_assigned_in_a_path(_, j, v),
 //TODO: SERVE FORSE IL CASO IN CUI LA X, SOURCE, VIENE SEMPRE ASSEGNATA A DELLE COSTANTI ?
 
 
-dependencies(if_label,j,v,v ) :- source_sink_NOT_assigned_in_a_path(if_label, j, v).
+dependencies(if_label,j,v,v ) :- source_sink_NOT_assigned_in_a_path(if_label, j, v),
+                                    !find_closest_assign_of_var_in_if(_,if_label,_).
 
 
+dependencies(if_label, la, v, d1) :-  find_closest_assign_of_var_in_if(_,if_label,d), 
+                                    (assign(la,v,d1,_); assign(la, v, _, d1)), belonging_if(if_label, la),
+                                    find_closest_assign_of_var_in_assignment(lass, la, d1), sink(_, d1),
+                                    !assign_constant(lass).
+
+dependencies(if_label, lq1, v, d),
+dependencies(else_label, lq2, v, d) :-  find_closest_assign_of_var_in_if(_,if_label,d), 
+                                    assign(la,v,d1,_), assign(lb, v, _, d1), belonging_if(if_label, la),
+                                    if_else_finder(if_label, else_label,_), belonging_if(else_label, lb),
+                                    assign_constant(la), assign_constant(lb), if(if_label, lq1,_ , _),if(else_label, lq2, _, _).
+                                    
 
 .decl most_external_if(i:label, e:label, j:label)
 .output most_external_if(IO=stdout)
@@ -295,6 +337,8 @@ most_external_if(i,e,j) :- if(i,_,_,_), if(e,_,_,_), successive_if(i,_), success
 
 most_external_if(i,e,j) :- if(i,_,_,_), if(e,_,_,_), if_else_finder(i,e,j),
                             c = count:{if(_,_,_,_)}, c<3.
+
+
 
 
 
@@ -348,6 +392,42 @@ new_reachable(l,j) :- reachable(l,j).
 new_reachable(l10,l6)  :- reachable(l10,l9), if_else_finder(l6,l9,_).
 
 
+.decl find_all_assign_of_var_in_if(l:label, j:label, v:var)
+.output find_all_assign_of_var_in_if(IO=stdout)
+
+find_all_assign_of_var_in_if(l1,i,v1) :- ( if(i,_,v1,_);(if(i,_,_,v1))), reachable(i,l1),
+                                            (
+                                                (   assign(l1,v1,d1,d2)
+                                                // ,(candidate(l2,d1);candidate(l2,d2)), 
+                                                //     reachable(l1,l2) 
+                                                )
+                                                ;
+                                                (source(l1,v1))
+                                            ).
+
+
+.decl NOT_find_all_assign_of_var_in_if(l:label, j:label, v:var)
+.output NOT_find_all_assign_of_var_in_if(IO=stdout)
+NOT_find_all_assign_of_var_in_if(l1,j1,v1) :- find_all_assign_of_var_in_if(l1,j1,v1), find_all_assign_of_var_in_if(l2,j2,v1),
+                                            reachable(l2,l1).
+
+
+.decl find_closest_assign_of_var_in_if(l:label, j:label, v:var)
+.output find_closest_assign_of_var_in_if(IO=stdout)
+
+find_closest_assign_of_var_in_if(l,j,v) :- find_all_assign_of_var_in_if(l,j,v), !NOT_find_all_assign_of_var_in_if(l,j,v),
+                                            (
+                                                (   assign(l,v,d1,d2),
+                                                    (candidate(l2,d1);candidate(l2,d2)), 
+                                                    reachable(l,l2) 
+                                                )
+                                                ;
+                                                (source(l,v1))
+                                            ).
+
+
+
+
 .decl new_dependencies(l:label, d:var)
 .output new_dependencies(IO=stdout)
 /*-----------------------------------------------------------------------------------------------------------
@@ -356,35 +436,42 @@ new_reachable(l10,l6)  :- reachable(l10,l9), if_else_finder(l6,l9,_).
 
 new_dependencies(ls,d) :- first_sanitize(ls,d).
 
+// new_dependencies(ls,d) :- if_else_finder(i,e,j), if(i,_,v1,v2), ( (candidate(l1,v1), reachable(i,l1));())
  
 //Versione semplificata di quello sopra, nel caso in cui non dovesse funzionre .
 new_dependencies(i2,d) :-   successive_if(i1,i2),(new_dependencies(i2,d); dependencies(i2,_,_,d)),
                             if_else_finder(i2,e2,_),(new_dependencies(e2,d); dependencies(e2,_,_,d)),
+                            // !find_closest_assign_of_var_in_if(_,i2,_), //Non vale per gli if che hanno nella cond. depend.
                             counter2 = count:{left_flag(_)}, counter2<1. /*RIGHT-HAND-SIDE CASE*/
 
 /*Caso con un solo if-else */
 new_dependencies(i2,d) :-   if_else_finder(i2,e2,_), 
                             dependencies(i2,_,_,d) , dependencies(e2,_,_,d),
+                            // !find_closest_assign_of_var_in_if(_,i2,_), 
                             counter1 = count:{if(_,_,_,_)}, counter1 <3,
                             counter2 = count:{left_flag(_)}, counter2<1. /*RIGHT-HAND-SIDE CASE*/
 
 
 new_dependencies(i2,d) :-   successive_if(i1,i2),(new_dependencies(i2,d); dependencies(i2,_,_,d)),
                             if_else_finder(i2,e2,_),(new_dependencies(e2,d); dependencies(e2,_,_,d)),
+                            // !find_closest_assign_of_var_in_if(_,i2,_), 
                             counter2 = count:{left_flag(_)}, counter2>0. /*LEFT-HAND-SIDE CASE*/
  
  /*Caso con un solo if-else */
 new_dependencies(i2,d) :-   successive_if(i1,i2),(new_dependencies(i2,d); dependencies(i2,_,_,d)),
                             if_else_finder(i2,e2,_),(new_dependencies(e2,d); dependencies(e2,_,_,d)),
+                            // !find_closest_assign_of_var_in_if(_,i2,_), 
                             counter1 = count:{if(_,_,_,_)}, counter1 <3,
                             counter2 = count:{left_flag(_)}, counter2>0. /*LEFT-HAND-SIDE CASE*/
  
  
- new_dependencies(i,d) :-    most_external_if(i,e,j), ( new_dependencies(i,d); dependencies(i,_,_,d) ),
+ new_dependencies(i,d) :-    most_external_if(i,e,j), !find_closest_assign_of_var_in_if(_,i,_), 
+                            ( new_dependencies(i,d); dependencies(i,_,_,d) ),
                             ( new_dependencies(e,d); dependencies(e,_,_,d) ),
                             counter2 = count:{left_flag(_)}, counter2<1. /*RIGHT-HAND-SIDE CASE*/
 
-new_dependencies(i,d) :-    most_external_if(i,e,j), ( new_dependencies(i,d); dependencies(i,_,_,d) ),
+new_dependencies(i,d) :-    most_external_if(i,e,j), !find_closest_assign_of_var_in_if(_,i,_), 
+                            ( new_dependencies(i,d); dependencies(i,_,_,d) ),
                             ( new_dependencies(e,d); dependencies(e,_,_,d) ),
                             counter2 = count:{left_flag(_)}, counter2>0. /*LEFT-HAND-SIDE CASE*/
 
