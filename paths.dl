@@ -366,26 +366,25 @@ dependencies(ls,ls, v, v) :- source_sink_NOT_assigned_in_a_path(if_label, j, v),
                             !find_closest_assign_of_var_in_assignment(_, la, d1).
 
 
-dependencies(if_label,j, v, v),
-dependencies(join_label,j, v, s) :- source_sink_NOT_assigned_in_a_path(if_label, j, v),
-                            if_else_finder(if_label,_,join_label), follows(ls,join_label),
-                            find_closest_assign_of_var_in_if(_  ,if_label,v1), 
+// dependencies(if_label,j, v, v),
+// dependencies(join_label,j, v, s) :- source_sink_NOT_assigned_in_a_path(if_label, j, v),
+//                             if_else_finder(if_label,_,join_label), follows(ls,join_label),
+//                             find_closest_assign_of_var_in_if(_  ,if_label,v1), 
                             
-                            (assign(la,s,d1,_); assign(la, s, _, d1)), sinkable(_, s), !sinkable(_,d1),
-                            !find_closest_assign_of_var_in_assignment(_, la, d1).
+//                             (assign(la,s,d1,_); assign(la, s, _, d1)), sinkable(_, s), 
+//                             !find_closest_assign_of_var_in_assignment(_, la, d1).
 
 
 
 
-
-// dependencies(if_label, la, v, d1),
-// dependencies(if_label, la, v, d1)  :-  !source_sink_NOT_assigned_in_a_path(if_label,_,_),
-//                                         find_closest_assign_of_var_in_if(_,if_label,d), 
-//                                     (assign(la,v,d1,_); assign(la, v, _, d1)), 
-//                                     belonging_if(if_label, la),
-//                                     find_closest_assign_of_var_in_assignment(lass, la, d1), 
-//                                     sinkable(_, d1),
-//                                     !assign_constant(lass).
+dependencies(else_label, la, v, v),
+dependencies(if_label, la, v, v)  :-  !source_sink_NOT_assigned_in_a_path(if_label,_,_),
+                                        find_closest_assign_of_var_in_if(_,if_label,d), 
+                                    (assign(la,v,d1,_); assign(la, v, _, d1)), 
+                                    belonging_if(if_label, la), if_else_finder(if_label,else_label,join_label),
+                                    find_closest_assign_of_var_in_assignment(lass, la, d1), 
+                                    !sinkable(_,d1), 
+                                    !assign_constant(lass).
 
 dependencies(if_label, lq1, v, d),
 dependencies(else_label, lq2, v, d) :- !source_sink_NOT_assigned_in_a_path(if_label,_,_), 
