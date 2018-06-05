@@ -76,9 +76,27 @@ if_else_finder(i,e,j) :- if(i, _ ,x,y), if(e, _ ,x,y), join(j, ij ,ej),
     The previous assumption has only one exception: If one of the variables used in the "double" assignment is also
     in a sink, then do it on the right hand side varaibles.
 */
+
+
+// .decl discriminator(l:label, x:number)
+
+// discriminator(l,c) :- find_closest_assign_of_var_in_if(l,_,v), !assign_constant(l),
+//                       assign(l1,v,d1,d2), belonging_if(l,l1),
+//                       find_closest_assign_of_var_in_assignment(lass1,l1,d1),
+//                       find_closest_assign_of_var_in_assignment(lass2,l1,d2), 
+//                       !assign_constant(lass1)
+//                         c = count:{left_flag(_)}, 
+
+
 .decl left_flag(l:symbol)
 .output left_flag(IO=stdout)
-left_flag(flag) :- flag="left", assign(_,_,a,b), candidate(_,a), candidate(_,b), !sink(_,a), !sink(_,b).
+left_flag(flag) :- flag="left", assign(l,_,a,b), find_closest_assign_of_var_in_assignment(l1,l,a),
+                        find_closest_assign_of_var_in_assignment(l2,l,b), 
+                        !assign_constant(l1), !assign_constant(l2),
+                        !sink(_,a), !sink(_,b).
+
+/*TODO: assicurati che questo secondo "left_flag" non deve avere come condizione pure !sink....*/
+
 left_flag(flag) :- flag="left", source_sink_NOT_assigned_in_a_path(if_label, j, v),
                             ((if_else_finder(if_label,_,join_label));(if_else_finder(fuck,if_label,join_label)) ),
                             follows(ls,join_label),
@@ -283,7 +301,8 @@ dependencies(belonging_label,j,v,d ) :- ( assign(j,v,d,_); assign(j,v,_,d) ),  /
                                                                             d the dependency
                                                                             */
                                     belonging_if(belonging_label,j), /*Takes only the belonging if of the assign */
-                                    candidate(l,d), reachable(j,l) , /* The dependency d, which is a 'candidate'
+                                    find_closest_assign_of_var_in_assignment(l1,j,d),
+                                    !assign_constant(l1), /* The dependency d, which is a 'candidate'
                                                                         can be wherever BUT it has to be 
                                                                         reachable from the 'path_labels',
                                                                         this mean  that has to be above */                                                                      
@@ -298,13 +317,14 @@ dependencies(belonging_label,j,v,v ) :- ( assign(j,v,d,_); assign(j,v,_,d) ),  /
                                                                             d the dependency
                                                                             */
                                     belonging_if(belonging_label,j), /*Takes only the belonging if of the assign */
-                                    candidate(l,d), reachable(j,l) , /* The dependency d, which is a 'candidate'
+                                    find_closest_assign_of_var_in_assignment(l1,j,d),
+                                    !assign_constant(l1), /* The dependency d, which is a 'candidate'
                                                                         can be wherever BUT it has to be 
                                                                         reachable from the 'path_labels',
                                                                         this mean  that has to be above */                                                                      
 
                                     sink(_,v), c = count:{left_flag(_)}, c>0,   /*Has to be in the sink and we have to be in the
-                                                                                 "right-hand" side mode.
+                                                                                 "left-hand" side mode.
                                                                                 */
                                     !find_closest_assign_of_var_in_if(_,belonging_label,_).
 
