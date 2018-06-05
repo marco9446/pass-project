@@ -14,7 +14,7 @@ line=`wc -l $d | grep -oE '^\s*[0-9]+'`
 echo -e "${YELLOW}Error line offset: ${line} ${NC}\n" 
 
 cat $d "paths.dl" >> out.dl
-souffle out.dl
+souffle -w out.dl
 rm out.dl
 echo
 echo

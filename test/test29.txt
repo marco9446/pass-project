@@ -25,6 +25,6 @@ follows("l8","l7").
 assign("l3","a","x","0").
 assign("l4","b","3","0").
 assign("l5","c","a","b").
-assign("l6","b","3","0").
+assign("l6","b","y","0").
 
 //expected output: ("l8","b"), ("l7","c").

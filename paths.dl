@@ -90,7 +90,7 @@ left_flag(flag) :- flag="left", source_sink_NOT_assigned_in_a_path(if_label, j, 
 
 
 .decl right_flag(l:symbol)
-//.output right_flag(IO=stdout)
+.output right_flag(IO=stdout)
 right_flag(flag) :- flag="right", c = count:{left_flag(_)}, c<1.
 
 
@@ -125,7 +125,7 @@ source_sink_assigned_in_a_path(else_label,j,v ) :- source(_,v), sink(_,v), else_
     else_label 'l'.
 */
 .decl source_sink_NOT_assigned_in_a_path(i:label, l:label, v:var)
-.output source_sink_NOT_assigned_in_a_path(IO=stdout)
+// .output source_sink_NOT_assigned_in_a_path(IO=stdout)
 
 source_sink_NOT_assigned_in_a_path(if_label, l, v) :- source(_,v), sink(_,v), if(if_label,l,_,_),
                                         if_else_finder(if_label, _, _),
@@ -150,7 +150,7 @@ var_in_sink_assigned_in_a_path(if_label,j,v ) :- ( assign(j,v,d,_); assign(j,v,_
 
 
 .decl var_in_sink_NOT_assigned_in_a_path(i:label, l:label, v:var)
-.output var_in_sink_NOT_assigned_in_a_path(IO=stdout)
+// .output var_in_sink_NOT_assigned_in_a_path(IO=stdout)
 
 var_in_sink_NOT_assigned_in_a_path(else_label, l, v) :- var_in_sink_assigned_in_a_path(if_label,_,v),
                                                         !assign(lq,v,_,_), belonging_if(lif,lq), 
@@ -234,9 +234,9 @@ belonging_if(j1,l) :- assign(l,_,_,_), if(j1,_,_,_), reachable(l,j1), !NOT_belon
 
 .decl find_all_assign_of_var_in_assignment(i:label, j:label, v:var) //Assignment of variable v in label j, has an assignment in label i
 .output find_all_assign_of_var_in_assignment(IO=stdout)
-
 find_all_assign_of_var_in_assignment(i,j,d1) :- ( assign(j,_,d1,_); assign(j,_,_,d1)), assign(i,d1,_,_), reachable(j,i).
 find_all_assign_of_var_in_assignment(i,j,d1) :- ( assign(j,_,d1,_); assign(j,_,_,d1)), source(i,d1), reachable(j,i).
+
 
 .decl find_not_assign_of_var_in_assignment(i:label, j:label, v:var)
 .output find_not_assign_of_var_in_assignment(IO=stdout)
@@ -252,6 +252,28 @@ find_closest_assign_of_var_in_assignment (i, j, v) :- find_all_assign_of_var_in_
                                                     !find_not_assign_of_var_in_assignment(i, j, v).
 
 
+
+.decl find_all_assign_of_var_sink(i:label, j:label, v:var) //Assignment of variable v in label j, has an assignment in label i
+.output find_all_assign_of_var_sink(IO=stdout)
+find_all_assign_of_var_sink(l,j,v) :-  sink(j,v), ( assign(l,v,d1,d2) ; source(l,v)).
+
+
+.decl find_not_assign_of_var_sink(i:label, j:label, v:var)
+.output find_not_assign_of_var_sink(IO=stdout)
+
+find_not_assign_of_var_sink(i1,j, v) :-    find_all_assign_of_var_sink(i1,j,v),
+                                                    find_all_assign_of_var_sink(i2,j,v),
+                                                    reachable(i2,i1).
+
+
+.decl find_closest_assign_of_var_sink(i:label, j:label, v:var)
+.output find_closest_assign_of_var_sink(IO=stdout)
+find_closest_assign_of_var_sink (i, j, v) :- find_all_assign_of_var_sink(i, j, v),
+                                                    !find_not_assign_of_var_sink(i, j, v).
+
+
+
+
 .decl assign_candidate(l:label)
 .output assign_candidate(IO=stdout)
 
@@ -265,7 +287,7 @@ assign_constant(l) :- assign(l,v,d1,d2), !assign_candidate(l).
 
 
 .decl dependencies(i:label, l:label, v:var, d:var ) 
-.output dependencies(IO=stdout)
+// .output dependencies(IO=stdout)
 
 
 /*  ---------------------------------------------------------------------------------------
@@ -399,7 +421,7 @@ dependencies(else_label, lq2, v, d) :- !source_sink_NOT_assigned_in_a_path(if_la
 
 
 .decl most_external_if(i:label, e:label, j:label)
-.output most_external_if(IO=stdout)
+// .output most_external_if(IO=stdout)
 most_external_if(i,e,j) :- if(i,_,_,_), if(e,_,_,_), successive_if(i,_), successive_if(e,_), 
                             !successive_if(_,i), !successive_if(_,e), if_else_finder(i,e,j),
                             c = count:{if(_,_,_,_)}, c>2.
@@ -417,26 +439,15 @@ most_external_if(i,e,j) :- if(i,_,_,_), if(e,_,_,_), if_else_finder(i,e,j),
 not_candidate(l, v) :- assign(l, v, _, _), !candidate(l,_).
 
 
-//FIXME: specify that the not_candidate line has to be after the candidate line
+
 .decl sanitize_no_if(l:label, v:var)
-// .output sanitize_no_if(IO=stdout)
+.output sanitize_no_if(IO=stdout)
 sanitize_no_if(l,b) :- !if(_,_,_,_), 
-                            sink(l, b), 
-                            candidate(s, b), 
-                            !assign(s, _, b, _), !assign(s, _, _, b),
-                            !not_candidate(_, b).
+                       sink(l,b),
+                        find_closest_assign_of_var_sink(la, a, b),
+                        !assign_constant(la).
 
 
-// !assign(p, b, _, _), Labels(p) , !candidate(p,b),  !assign(s, _, b, _), !assign(s, _, _, b)
-
-/*
-First sanitize: for the non nested loop, to make it easier. for now
-
-*/
-.decl first_sanitize(l:label, d:var)
-.output first_sanitize(IO=stdout)
-
-first_sanitize(l,d) :- sanitize_no_if(l,d).
 
 
 .decl not_successive_if(i:label, j:label)
@@ -482,7 +493,7 @@ NOT_find_all_assign_of_var_in_if(l1,j1,v1) :- find_all_assign_of_var_in_if(l1,j1
 
 
 .decl find_closest_assign_of_var_in_if(l:label, j:label, v:var)
-.output find_closest_assign_of_var_in_if(IO=stdout)
+// .output find_closest_assign_of_var_in_if(IO=stdout)
 
 find_closest_assign_of_var_in_if(l,j,v) :- find_all_assign_of_var_in_if(l,j,v), !NOT_find_all_assign_of_var_in_if(l,j,v),
                                             (
@@ -498,12 +509,12 @@ find_closest_assign_of_var_in_if(l,j,v) :- find_all_assign_of_var_in_if(l,j,v), 
 
 
 .decl new_dependencies(l:label, d:var)
-.output new_dependencies(IO=stdout)
+// .output new_dependencies(IO=stdout)
 /*-----------------------------------------------------------------------------------------------------------
 /* IF CASE: RECURSIVE, FOR MORE THAN 2 NESTED IF-ELSE
 /*RIGHT-HAND-SIDE: Case */
 
-new_dependencies(ls,d) :- first_sanitize(ls,d).
+new_dependencies(ls,d) :- sanitize_no_if(ls,d).
 
 // new_dependencies(ls,d) :- if_else_finder(i,e,j), if(i,_,v1,v2), ( (candidate(l1,v1), reachable(i,l1));())
  
@@ -559,7 +570,7 @@ not_final(l, d, l1) :-   ( new_dependencies(l,d); very_new_dependencies(l,d) ),
 
 
 .decl very_new_dependencies(l:label, d:var) /*Prende dependencies e ricopia mettendo il sanitize nel label subito dopo */
-.output very_new_dependencies(IO=stdout)
+// .output very_new_dependencies(IO=stdout)
 
 very_new_dependencies(l,d) :- dependencies(q,_,_,d), if(q,l,_,_), counter2 = count:{left_flag(_)}, counter2<1.
 very_new_dependencies(ls,d) :- dependencies(_,q,d,_), var_in_sink_NOT_assigned_in_a_path(_,q,_),
