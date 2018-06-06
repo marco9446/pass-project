@@ -49,7 +49,7 @@ candidate(l, x) :- ( if(l,_,x,_);if(l,_,_,x)), candidate(q,x), reachable(l,q).
 
 
 .decl sinkable(l:label, v:var)
-.output sinkable(IO=stdout)
+// .output sinkable(IO=stdout)
 sinkable(l, v) :- sink(l, v).
 sinkable(l, x) :- assign(l,x,d1,d2), sinkable(q, x), reachable(q, l), 
                 (candidate(ld1, d1),reachable(l,ld1) ; candidate(ld2, d2), reachable(l,ld2)).
@@ -59,7 +59,7 @@ sinkable(l, x) :- assign(l,x,d1,d2), sinkable(q, x), reachable(q, l),
     Return three labels corresponding to the location of the if-else-join of each if-else.
 */
 .decl if_else_finder(i:label, e:label, j:label) 
-// .output if_else_finder(IO=stdout)
+.output if_else_finder(IO=stdout)
 if_else_finder(i,e,j) :- if(i, _ ,x,y), if(e, _ ,x,y), join(j, ij ,ej), 
                 !follows(e, ij), 
                 follows(j, ej), 
@@ -214,10 +214,16 @@ internal_if(l,e,j) :- if_else_finder(l,e,j), !external_if(l,_,_).
 NOT_belonging_if(j1,l) :- assign(l,_,_,_), if(j1,_,_,_), if(j2,_,_,_), reachable(l,j1), reachable(l,j2),
                         !reachable(j1,j2), reachable(j2,j1).
 
+
+NOT_belonging_if(j1,l) :- if(l,_,_,_), if(j1,_,_,_), if(j2,_,_,_), reachable(l,j1), reachable(l,j2),
+                        !reachable(j1,j2), reachable(j2,j1).
+
+
 .decl belonging_if(j:label, l:label) /* Label l belongs to if in label j */
 
-// .output belonging_if(IO=stdout)
+.output belonging_if(IO=stdout)
 belonging_if(j1,l) :- assign(l,_,_,_), if(j1,_,_,_), reachable(l,j1), !NOT_belonging_if(j1,l).
+belonging_if(j1,l) :- if(l,_,_,_), if(j1,_,_,_), reachable(l,j1), !NOT_belonging_if(j1,l).
 
 
 
@@ -286,8 +292,8 @@ assign_constant(l) :- assign(l,v,d1,d2), !assign_candidate(l).
 
 
 
-.decl dependencies(i:label, l:label, v:var, d:var ) 
-// .output dependencies(IO=stdout)
+.decl dependencies(i:label, l:label, v:var, d:var, s:symbol ) 
+.output dependencies(IO=stdout)
 
 
 /*  ---------------------------------------------------------------------------------------
@@ -344,14 +350,16 @@ dependencies(belonging_label,j,v,v ,s) :-  s="left", ( assign(j,v,d,_); assign(j
 //     If that variable was assigned to something else before the if-path, then the else path has to take it 
 //     into account. This function therefore sets this dependency.
 // */
-dependencies(l,j,v,d,s ) :-   s="right", var_in_sink_NOT_assigned_in_a_path(_, j, v),
+dependencies(belonging_label,j,v,d,s ) :-   s="right", var_in_sink_NOT_assigned_in_a_path(_, j, v),
+                                belonging_if(belonging_label,j),
                             find_previous(l,j), ( assign(l,v,d,_);assign(l,v,_,d)), 
                             candidate(ld,d), reachable(l,ld),
                             sink(_,v).
 // TODO: AGGIUNGI find_closest ....etc...
 
 
-dependencies(l,j,v,v,s ) :-  s="left",  var_in_sink_NOT_assigned_in_a_path(_, j, v),
+dependencies(belonging_label,j,v,v,s ) :-  s="left",  var_in_sink_NOT_assigned_in_a_path(_, j, v),
+                                belonging_if(belonging_label,j),
                                         find_previous(l,j), ( assign(l,v,d,_);assign(l,v,_,d)), candidate(ld,d), reachable(l,ld),
                                         sink(_,v).
 
@@ -427,7 +435,7 @@ sanitize_no_if(l,b) :- !if(_,_,_,_),
 
 
 .decl not_successive_if(i:label, j:label)
-//.output not_successive_if(IO=stdout)
+.output not_successive_if(IO=stdout)
 not_successive_if(i0,i2) :- if(i0,_,_,_), if(i1,_,_,_), if(i2,_,_,_),
                             reachable(i2,i0), reachable(i2,i1), reachable(i1,i0),
                             !reachable(i0,i1), !reachable(i1,i2),
@@ -437,13 +445,13 @@ not_successive_if(i0,i2) :- if(i0,_,_,_), if(i1,_,_,_), if(i2,_,_,_),
 
 
 .decl successive_if(i:label, j:label) /*The if in label i is the successive if of the if in label j*/
-//.output successive_if(IO=stdout)
+.output successive_if(IO=stdout)
 successive_if(i0,i2) :- if(i0,_,_,_), if(i2,_,_,_), reachable(i2,i0),
                         if_else_finder(i2,_,_), !not_successive_if(i0,i2).
 
 
 .decl new_reachable(l:label, j:label)
-//.output new_reachable(IO=stdout)
+.output new_reachable(IO=stdout)
 new_reachable(l,j) :- reachable(l,j).
 new_reachable(l10,l6)  :- reachable(l10,l9), if_else_finder(l6,l9,_).
 
@@ -485,55 +493,59 @@ find_closest_assign_of_var_in_if(l,j,v) :- find_all_assign_of_var_in_if(l,j,v), 
 
 
 
-.decl new_dependencies(l:label, d:var,s: symbol)
+.decl new_dependencies(i:label, l:label, d:var,s: symbol)
 .output new_dependencies(IO=stdout)
 
 /*-----------------------------------------------------------------------------------------------------------
 /* IF CASE: RECURSIVE, FOR MORE THAN 2 NESTED IF-ELSE
 /*RIGHT-HAND-SIDE: Case */
 
-new_dependencies(ls,d, s) :- (s="left",s="right"),first_sanitize(ls,d).
-
 // new_dependencies(ls,d) :- if_else_finder(i,e,j), if(i,_,v1,v2), ( (candidate(l1,v1), reachable(i,l1));())
  
 // due if, sia if che else, metti sopra. RIGHT-HAND
-new_dependencies(i2,d,s) :-   s="right", successive_if(i1,i2),(new_dependencies(i2,d,s); dependencies(i2,_,_,d,s)),
-                            if_else_finder(i2,e2,_),(new_dependencies(e2,d,s); dependencies(e2,_,_,d,s)). /*RIGHT-HAND-SIDE CASE*/
+new_dependencies(ls, i2,d,s) :-     s="right", successive_if(i1,i2), belonging_if(ls,i2),
+                                (new_dependencies(i2,_,d,s); dependencies(i2,_,_,d,s)),
+                                if_else_finder(i2,e2,_),
+                                (new_dependencies(e2,_,d,s); dependencies(e2,_,_,d,s)). /*RIGHT-HAND-SIDE CASE*/
 
 /*Caso con un solo if-else */
-new_dependencies(i2,d,s) :-    s="right", if_else_finder(i2,e2,_), 
+new_dependencies(i2, i2,d,s) :-    s="right", if_else_finder(i2,e2,_), 
                             dependencies(i2,_,_,d,s) , dependencies(e2,_,_,d,s),
                             counter1 = count:{if(_,_,_,_)}, counter1 <3. /*RIGHT-HAND-SIDE CASE*/
 
+ new_dependencies(i, i,d,s) :-    s="right", most_external_if(i,e,j), 
+                            ( new_dependencies(i,_,d,s); dependencies(i,_,_,d,s) ),
+                            ( new_dependencies(e,_,d,s); dependencies(e,_,_,d,s) ).
 
-new_dependencies(i2,d,s ) :-    s="left", successive_if(i1,i2),(new_dependencies(i2,d,s); dependencies(i2,_,_,d,s)),
-                            if_else_finder(i2,e2,_),(new_dependencies(e2,d,s ); dependencies(e2,_,_,d,s)). /*LEFT-HAND-SIDE CASE*/
+
+new_dependencies(ls, i2,d,s ) :-    s="left", successive_if(i1,i2), belonging_if(ls,i2),
+                                (new_dependencies(i2,_,d,s); dependencies(i2,_,_,d,s)),
+                                if_else_finder(i2,e2,_),
+                                (new_dependencies(e2,_,d,s ); dependencies(e2,_,_,d,s)). /*LEFT-HAND-SIDE CASE*/
  
  /*Caso con un solo if-else */
-new_dependencies(i2,d,s) :-    s="left", (new_dependencies(i2,d,s); dependencies(i2,_,_,d,s)),
-                            if_else_finder(i2,e2,_),(new_dependencies(e2,d,s); dependencies(e2,_,_,d,s)),
+new_dependencies(i2, i2,d,s) :-    s="left", (new_dependencies(i2,_,d,s); dependencies(i2,_,_,d,s)),
+                            if_else_finder(i2,e2,_),(new_dependencies(e2,_,d,s); dependencies(e2,_,_,d,s)),
                             counter1 = count:{if(_,_,_,_)}, counter1 <3. /*LEFT-HAND-SIDE CASE*/
  
- 
- new_dependencies(i,d,s) :-    s="right", most_external_if(i,e,j), 
-                            ( new_dependencies(i,d,s); dependencies(i,_,_,d,s) ),
-                            ( new_dependencies(e,d,s); dependencies(e,_,_,d,s) ),
-                            counter2 = count:{left_flag(_)}, counter2<1. /*RIGHT-HAND-SIDE CASE*/
 
-new_dependencies(i,d,s ) :-     s="left", most_external_if(i,e,j), 
-                            ( new_dependencies(i,d,s); dependencies(i,_,_,d,s) ),
-                            ( new_dependencies(e,d,s); dependencies(e,_,_,d,s) ). /*LEFT-HAND-SIDE CASE*/
+new_dependencies(i, i,d,s ) :-     s="left", most_external_if(i,e,j), 
+                            ( new_dependencies(i,_,d,s); dependencies(i,_,_,d,s) ),
+                            ( new_dependencies(e,_,d,s); dependencies(e,_,_,d,s) ). /*LEFT-HAND-SIDE CASE*/
 
 
 
 .decl not_final(l:label, d:var, j:label, s:symbol)
 .output not_final(IO=stdout)
-not_final(l1,d, l, s) :-  s="right", ( new_dependencies(l,d,s); very_new_dependencies(l,d,s) ),
-                    ( new_dependencies(l1,d,s);very_new_dependencies(l1,d,s) ), new_reachable(l1,l).
+not_final(l1,d, l, s) :-  s="right", ( new_dependencies(_,l,d,s); very_new_dependencies(l,d,s) ),
+                    ( new_dependencies(_,l1,d,s);very_new_dependencies(l1,d,s) ), new_reachable(l1,l).
 
-not_final(l, d, l1, s) :-  s="left", ( ( new_dependencies(ld,d,s), if_else_finder(ld,_,l)); very_new_dependencies(l,d,s) ),
-                     (( new_dependencies(lq,d,s), if_else_finder(lq,_,l1));very_new_dependencies(l1,d,s) ), 
+not_final(l, d, l1, s) :-  s="left", 
+                        ( ( new_dependencies(_,ld,d,s), if_else_finder(ld,_,l));very_new_dependencies(l,d,s) ),
+                        (( new_dependencies(_,lq,d,s), if_else_finder(lq,_,l1));very_new_dependencies(l1,d,s) ), 
                     new_reachable(l1,l).
+
+
 
 
 
@@ -548,30 +560,28 @@ very_new_dependencies(ls,d,s) :-  s="right",dependencies(_,q,d,_,s), var_in_sink
 very_new_dependencies(l,d,s) :-  s="left", dependencies(_,q,_,d,s), follows(l,q).
 
 
-/*
-    IMPORTANT!!! IN "second_sanitize" THE SANITIZE HAS TO BE READ AS "AFTER THAT LABEL" THIS IS DUE TO THE FACT THAT
-    THE ELSE FOLLOWS THE LABEL PRECEDEING THE IF, SO IF I DO THE SANITIZE IN THE IF LABEL THE ELSE WOULDN'T SEE IT
-*/
+// /*
+//     IMPORTANT!!! IN "second_sanitize" THE SANITIZE HAS TO BE READ AS "AFTER THAT LABEL" THIS IS DUE TO THE FACT THAT
+//     THE ELSE FOLLOWS THE LABEL PRECEDEING THE IF, SO IF I DO THE SANITIZE IN THE IF LABEL THE ELSE WOULDN'T SEE IT
+// */
 .decl second_sanitize(l:label, d:var, s:symbol)
 .output second_sanitize(IO=stdout)
 
-second_sanitize(lp,d,s ) :-  s="right",  ( new_dependencies(lp,d,s);very_new_dependencies(lp,d,s) ),
+second_sanitize(lp,d,s ) :-  s="right",  ( new_dependencies(_,lp,d,s);very_new_dependencies(lp,d,s) ),
                             !not_final(lp,d,_,s).
 
-second_sanitize(ls,d,s) :-    s="left",new_dependencies(lp,d,s), if_else_finder(lp,_,ls),
-                            !not_final(_,d,lp,s).
+second_sanitize(ls,d,s) :-    s="left",new_dependencies(_,lp,d,s), if_else_finder(lp,_,ls),
+                            !not_final(ls,d,_,s).
 
 second_sanitize(lp,d, s) :-   s="left",  dependencies(_,ls,_,d,s), follows(lp,ls),
                             !not_final(lp,d,_,s).
 
 
-/*
-    TODO: FOR LEFT-HAND-SIDE
-    RICORDA DI FARE IL LEFTT!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1
-    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1
-    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1
 
-*/
+// /*
+//     TODO: controllare ci sia il closest nelle varie dependeci o boh non so dove.
+
+// */
 
 .decl final_sanitize(l:label, d:var)
 .output final_sanitize(IO=stdout)
@@ -587,3 +597,4 @@ final_sanitize(l2, d2) :- counter1 = count:{second_sanitize(_,_,s1)}, s1="right"
                         second_sanitize(l2,d2,s2),
                         counter1 > counter2 .
 
+final_sanitize(ls,d) :- sanitize_no_if(ls,d).

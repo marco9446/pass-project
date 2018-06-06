@@ -8,19 +8,20 @@
 //L8:  }
 //L9: }		
 //L10: else{
-//L11    z = x
-//L12:   if(z>0){
-//L13: 	    u:=y;
-//L14: 	 }
-//L15:   else{
-//L16: 	    u:=z;
-//L17:   }
-//L18:  }
-//L19: sink(x);		
+//L11:   z = 3
+//L12:   z = x
+//L13:   if(z>0){
+//L14: 	    u:=y;
+//L15: 	 }
+//L16:   else{
+//L17: 	    u:=z;
+//L18:   }
+//L19:  }
+//L20: sink(u);		
 
 source("l1","x").
 
-sink("l19","x").	
+sink("l19","u").	
 
 follows("l2","l1").
 follows("l3","l2").
@@ -36,19 +37,22 @@ follows("l11","l10").
 follows("l12","l11").
 follows("l13","l12").
 follows("l14","l13").
-follows("l15","l11").
-follows("l16","l15").
+follows("l15","l16").
+follows("l16","l12").
 follows("l17","l16").
 follows("l18","l17").
-follows("l18","l14").
-follows("l19","l9").
+follows("l19","l15").
 follows("l19","l18").
+follows("l20","l9").
+follows("l20","l19").
 
 join("l9","l5","l8").
-join("l18","l14","l17").
-join("l19","l9","l18").
+join("l19","l15","l18").
+join("l20","l9","l19").
 
-assign("l11","z","x","0").
+
+assign("l10","z","x","0").
+assign("l11","z","3","0").
 assign("l4","x","y","z").
 assign("l7","u","0","0").
 assign("l13","u","y","0").
@@ -59,9 +63,7 @@ if("l2","l3","y","0").
 if("l3","l4","z","0").
 if("l6","l7","z","0").
 if("l10","l11","y","0").
-if("l12","l13","z","0").
-if("l15","l16","z","0").
+if("l13","l14","z","0").
+if("l16","l17","z","0").
 
-
-
-//expected output: ("l8","x"), ("l18","x").
+//expected output: ("l19","u").

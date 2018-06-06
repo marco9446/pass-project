@@ -1,7 +1,7 @@
 #!/bin/bash
 TEMP_FILE="out.dl"
 MAIN_FILE="paths.dl"
-FUNCTION_TO_SHOW="second_sanitize"
+FUNCTION_TO_SHOW="final_sanitize"
 
 
 

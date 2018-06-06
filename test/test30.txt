@@ -16,11 +16,11 @@
 //L16: 	    u:=z;
 //L17:   }
 //L18:  }
-//L19: sink(x);		
+//L19: sink(u);		
 
 source("l1","x").
 
-sink("l19","x").	
+sink("l19","u").	
 
 follows("l2","l1").
 follows("l3","l2").
@@ -62,6 +62,4 @@ if("l10","l11","y","0").
 if("l12","l13","z","0").
 if("l15","l16","z","0").
 
-
-
-//expected output: ("l8","x"), ("l18","x").
+//expected output: ("l18","u").
