@@ -6,7 +6,7 @@
 //L6:  else{
 //L7:    w:=y+z;
 //L8:  }
-//L9: sink(w);
+//L9:  sink(w);
 //L10: sink(y);
 
 source("l1","x").

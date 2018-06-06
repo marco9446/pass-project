@@ -2,10 +2,10 @@
 //L2: y:=source();
 //L3: z:=source();
 //L4: if(z>0){
-//L5: w:=x;
+//L5:   w:=x;
 //L6: }
 //L7: else{
-//L8: w:=0;
+//L8:   w:=0;
 //L9: }
 //L10: sink(w);
 //L11: sink(x);

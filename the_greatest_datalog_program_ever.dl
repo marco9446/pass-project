@@ -1,6 +1,6 @@
 // Authors: Marco Ravazzini & Flavia Cavallaro
 //          with the partecipation of Calcutta
-
+//		 <3 <3 Calcutta <3 <3
 
 
 
@@ -20,109 +20,6 @@
 .decl assign( l:label, x:var, y:var, z:var ) 
 .decl if(l1:label, l2:label, x:var, y:var)
 
-//L2: if (y > 0){
-//L3:  if(z > 0){
-//L4:  u:=x;
-//L5:  }
-//L6:  else{
-//L7:   u:=0;
-//L8:  }
-//L9: }  
-//L10: else{
-//L11:   if(z>0){
-//L12:      u:=y;
-//L13:   }
-//L14:   else{
-//L15:      u:=z;
-//L16:   }
-//L17:  }
-//L18: sink(u);  
-
-// source("l1","x").
-
-// sink("l18","u"). 
-
-// follows("l2","l1").
-// follows("l3","l2").
-// follows("l4","l3").
-// follows("l5","l4").
-// follows("l6","l2").
-// follows("l7","l6").
-// follows("l8","l7").
-// follows("l9","l5").
-// follows("l9","l8").
-// follows("l10","l1").
-// follows("l11","l10").
-// follows("l12","l11").
-// follows("l13","l12").
-// follows("l14","l10").
-// follows("l15","l14").
-// follows("l16","l15").
-// follows("l17","l13").
-// follows("l17","l16").
-// follows("l18","l9").
-// follows("l18","l17").
-
-// join("l9","l5","l8").
-// join("l17","l13","l16").
-// join("l18","l9","l17").
-
-// assign("l4","u","x","0").
-// assign("l7","u","0","0").
-// assign("l12","u","y","0").
-// assign("l15","u","z","0").
-
-
-// if("l2","l3","y","0").
-// if("l3","l4","z","0").
-// if("l6","l7","z","0").
-// if("l10","l11","y","0").
-// if("l11","l12","z","0").
-// if("l14","l15","z","0").
-
-source("l1","x").
-
-sink("l18","u").	
-
-follows("l2","l1").
-follows("l3","l2").
-follows("l4","l3").
-follows("l5","l4").
-follows("l6","l2").
-follows("l7","l6").
-follows("l8","l7").
-follows("l9","l5").
-follows("l9","l8").
-follows("l10","l1").
-follows("l11","l10").
-follows("l12","l11").
-follows("l13","l12").
-follows("l14","l10").
-follows("l15","l14").
-follows("l16","l15").
-follows("l17","l13").
-follows("l17","l16").
-follows("l18","l9").
-follows("l18","l17").
-
-join("l9","l5","l8").
-join("l17","l13","l16").
-join("l18","l9","l17").
-
-assign("l4","u","x","0").
-assign("l7","u","0","0").
-assign("l12","u","y","0").
-assign("l15","u","z","0").
-
-
-if("l2","l3","y","0").
-if("l3","l4","z","0").
-if("l6","l7","z","0").
-if("l10","l11","y","0").
-if("l11","l12","z","0").
-if("l14","l15","z","0").
-
-
 
 //##############################################################################
 
@@ -133,7 +30,7 @@ if("l14","l15","z","0").
 *   (ex. l1, l2 ...)
 */
 .decl Labels(i:label )
-// .output Labels(IO=stdout)
+//.output Labels(IO=stdout)
 
 Labels(l) :- source(l,_).
 Labels(l) :- follows(l,_).
@@ -144,29 +41,30 @@ Labels(l) :- follows(_,l).
 *   The Numbers function strips the labes in order to optain only the number of
 *   lines, ignoring the first character 
 */
-.decl Numbers(i:label )
-// .output Numbers(IO=stdout)
+.decl Numbers(i:symbol )
+//.output Numbers(IO=stdout)
 Numbers( substr(x,1,strlen(x)-1) ) :- Labels(x), strlen(x) > 1.
  
 
 /**
 *   Returns al the lines y that are greater than line x
 */
+
 .decl Less(x:symbol, y:symbol)
-// .output Less(IO=stdout)
+//.output Less(IO=stdout)
 Less(x,y) :-Numbers(x), Numbers(y), ord(x) < ord(y). 
 
 
 .decl Transitive(x:symbol, y:symbol) 
-// .output Transitive(IO=stdout)
+//.output Transitive(IO=stdout)
 Transitive(x,z) :-Less(x,y), Less(y,z). 
 
 
 /**
 *   Returns the line i with line i+1 (ex. l1  l2, l2  l3 ecc..)
 */
-.decl Next_line(i:label, j:label) // j after i
-// .output Next_line(IO=stdout)
+.decl Next_line(i:symbol, j:symbol) // j after i
+.output Next_line(IO=stdout)
 Next_line(cat("l", i),cat("l", j)) :-Less(i,j), !Transitive(i,j).
 
 
@@ -188,32 +86,48 @@ Loop(i,e,j) :- if(i, _ ,x,y), if(e, _ ,x,y), join(j, l ,_), Next_line(l,e),
 .decl candidate( l:label, x: var) 
 .output candidate(IO=stdout)
 candidate(l, x) :- source( l ,x).
-candidate(l, x) :- assign(l,x,y,_), candidate(_,y).
+candidate(l, x) :- assign(l,x,y,z), candidate(_,y), !candidate(_,z) , 
 candidate(l, x) :- assign(l,x,_,z), candidate(_,z).
 candidate(l, x) :- if(l,_,x,_), candidate(_,x).
 candidate(l, x) :- if(l,_,_,x),candidate(_,x).
+candidate(l, x) :- 
+
+/**
+*   return all the if that could contain the desired candidate in the form 
+*   2  l3 where 2 is a number representing the line of the if and l2 is the label of the candidate 
+*/
+.decl find_possible_ifs_of_candidate(l:number, j:label)
+//.output find_possible_ifs_of_candidate(IO=stdout)
+find_possible_ifs_of_candidate(ord(substr(l,1,strlen(l)-1))-23,l1 ) :- 
+                if(l,_,_,_) , candidate(l1,_), reachable(l1,l),
+                Loop(l,_,j),
+                ord(substr(l1,1,strlen(l1)-1)) < ord(substr(j,1,strlen(j)-1)).
+
+
+/**
+*The candidate in label l belongs to the if in line j
+*/
+.decl find_belonging_if_of_candidate(j:number , l:label) 
+.output find_belonging_if_of_candidate(IO=stdout)
+find_belonging_if_of_candidate(j,l) :- find_possible_ifs_of_candidate(_,l), j = max x:{find_possible_ifs_of_candidate(x,l)}.
+
 
 
 .decl hypothetical_candidate(l:label, x:var )
 .output hypothetical_candidate(IO=stdout)
-// //TODO: PUT AS "HYPOTHETICAL_CANDIDATE" ALL THOSE LABELS WHERE I HAVE AN IF,
-// // AND INSIDE THE IF THERE ARE CANDIDATES...THERE MAY BE EVEN MORE THAN ONE, e.g. if I have two diff so
-// urces
-// //later used inside the Loop
-hypothetical_candidate(l,x) :- if(l,_,x,_).
-// // hyp_candidate :- given a if(l,...) and the corresponding Loop in l, Loop(l,e,j) 
-// //                              there is a candidate in l2, where l2 is inside the loop: l2<l and l2>j
+hypothetical_candidate(l,x) :- translate(num,l),find_belonging_if_of_candidate(num,lc) , candidate(lc,x).
 
 
 /**
-*   Returns the position (IF ELSE JOIN) of the if statements contining other
+*   Returns the position (IF ELSE JOIN) of the if statements containing other
 *   IF statements nested inside them
 */
 .decl external_if(l:label, e:label, j:label )
-.output external_if(IO=stdout)
-external_if (i1,e1, j1) :- Loop(i1,e1,j1), Loop(i2,e2,j2), 
+//.output external_if(IO=stdout)
+external_if (i1,e1, j1) :- Loop(i1,e1,j1), Loop(i2,_,j2), 
             ord(substr(i1,1,strlen(i1)-1))<ord(substr(i2,1,strlen(i2)-1)),
             ord(substr(j2,1,strlen(j2)-1))<ord(substr(e1,1,strlen(e1)-1)).
+
 
 
 /**
@@ -248,22 +162,114 @@ internal_if_no_both_candidate (i1, e1, j1):- Loop(i1,e1,j1), !external_if(i1,e1,
         !internal_if_both_candidate (i1,e1, j1, _).
 
 
+.decl reachable(l:label, j:label)
+reachable(X,Y)  :-  follows(X,Y).
+reachable(X,Y)  :-  reachable(X,Z), follows(Z,Y).
+
+
+.decl external_if_no_both_candidate(l:label, x:var )
+.output external_if_no_both_candidate(IO=stdout)
+external_if_no_both_candidate (l1, x) :-Loop(l1,e1,_),
+                                        find_belonging_if_of_candidate(num1,lc1),
+                                        translate(num1,l1), 
+                                        candidate(lc1,x), 
+                                        !find_belonging_if_of_candidate(num2,lc2), 
+                                        translate(num2,e1),
+                                        candidate(lc2,x).
+       
+.decl external_if_both_candidate(l:label, x:var )
+.output external_if_both_candidate(IO=stdout)
+external_if_both_candidate(l1,x) :- Loop(l1,e1,_),
+                                        find_belonging_if_of_candidate(num1,lc1),
+                                        translate(num1,l1), 
+                                        candidate(lc1,x), 
+                                        find_belonging_if_of_candidate(num2,lc2), 
+                                        translate(num2,e1),
+                                        candidate(lc2,x).
+
+
+.decl translate(x:number, i:label)
+//.output translate(IO=stdout)
+translate(ord(substr(i,1,strlen(i)-1))-23,i) :- Labels(i).
+
+
+
 
 .decl not_candidate(l:label, x:var)
 .output not_candidate(IO=stdout)
 
 not_candidate(l,x) :- internal_if_no_both_candidate(l,_,_ ), hypothetical_candidate(l,x).
 not_candidate(l,x) :- internal_if_no_both_candidate(_,l,_ ), hypothetical_candidate(l,x).
-// not_candidate(l,x) :- external_if(i1, e1, j1), (external_if(i2, e2, j2) | (internal_if_both_candidate)), 
+not_candidate(i1,x) :- external_if(i1, e1, _), not_candidate(i2,x),
+        ord(substr(i2,1,strlen(i2)-1))>ord(substr(i1,1,strlen(i1)-1)),
+        ord(substr(i2,1,strlen(i2)-1))<ord(substr(e1,1,strlen(e1)-1)),
+        !external_if_both_candidate(i1,x).
+not_candidate(e1,x) :- external_if(_, e1, j1), not_candidate(i2,x),
+        ord(substr(i2,1,strlen(i2)-1))>ord(substr(e1,1,strlen(e1)-1)),
+        ord(substr(i2,1,strlen(i2)-1))<ord(substr(j1,1,strlen(j1)-1)),
+        !external_if_both_candidate(e1,x).
+
+// FALLO PURE SULL'ELSE 
+// not_candidate(l,x) :- external_if(i1, e1, j1), external_if(i2, e2, j2),  
+
+
+
 
 
 .decl sanitize(l1:label, x: var) 
-.output sanitize(IO=stdout)
+//.output sanitize(IO=stdout)
 
 
 sanitize(l,x) :- candidate(l,x), sink(_,x).
 //sanitize(l,x) :- candidate(_,x), sink(l,x).
 sanitize(l,x) :- candidate(_,x), if(l,_,x,_).
+
+
+
+
+// 1-  SE C'È UN CANDIDATE CHE SOPRA NON HA IF ALLORA SICURAMENTE LA SANITIZE VA FATTA LÌ
+// 4- PAY ATTENTION TO THE OPC
+
+.decl HC_numbers(x: number ,v:var) //hypotethical candidate with labels converted in number
+.output HC_numbers(IO=stdout)
+HC_numbers(x,v) :- hypothetical_candidate(l1,v),  translate(x,l1).
+
+.decl HC_NON_NOT_CANDIDATE(x:number, v:var)
+//.output HC_NON_NOT_CANDIDATE(IO=stdout)
+HC_NON_NOT_CANDIDATE(x,v)  :-  HC_numbers(x,v), translate(x,l1), !not_candidate(l1,v).
+
+// 2- FILTER_UNO: FIRST HYPOTETHICAL CANDIDATE THAT IS NOT A "NOT_CANDIDATE" !
+.decl filter_one(l:number, v:var )
+.output filter_one(IO=stdout)
+filter_one(x, v) :-  HC_NON_NOT_CANDIDATE(_,v), 
+                x = min y:{HC_NON_NOT_CANDIDATE(y,_)}.
+//TODO: Alla fine riconvertire in label.
+
+
+.decl filter_two(l:label, v:var)
+.output filter_two(IO=stdout)
+
+<<<<<<< HEAD
+filter_two(l,v) :- translate(l,l0), candidate(l0,v), !filter_one(l1,v), translate(l1,_),
+            l<l1,
+            !candidate(l2,v),
+            translate(num2,l2),
+            num2<l.
+=======
+filter_two(l1,x) :- Loop(l1,_,j1), assign(l2,u,_,_), if(l1,_,x,_), candidate(_,x),
+                sink(_,u),             
+                ord(substr(l2,1,strlen(l2)-1))>ord(substr(l1,1,strlen(l1)-1)),
+                ord(substr(l2,1,strlen(l2)-1))<ord(substr(j1,1,strlen(j1)-1)).
+
+filter_two(l1,x) :- Loop(l1,_,j1), assign(l2,u,_,_), if(l1,_,_,x), candidate(_,x),
+                sink(_,u),             
+                ord(substr(l2,1,strlen(l2)-1))>ord(substr(l1,1,strlen(l1)-1)),
+                ord(substr(l2,1,strlen(l2)-1))<ord(substr(j1,1,strlen(j1)-1)).
+
+
+// 3- OTHERWISE INSIDE THE IF WHEN THERE IS NOTHING ELSE ABOVE.
+
+>>>>>>> af7aaf0dc568620e06fa7c685f69ad528d724a0e
 
 
 // -- analysis --

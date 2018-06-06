@@ -1,11 +1,11 @@
 //L1:  x:=source();
 //L2:  y:=source();
-//L3:  z:=source();
+//L3:  x=3
 //L4:  if(v>0){
 //L5:    u:=x+y;
 //L6:  }
 //L7:  else{
-//L8:    u:=z;
+//L8:    u:=x;
 //L9:  }
 //L10: sink(u);
 
@@ -28,8 +28,9 @@ follows("l10","l9").
 
 join("l10","l6","l9").	
 	
+assign("l3","x","3","0").
 assign("l5","u","x","y").
-assign("l8","u","z","0").
+assign("l8","u","x","0").
 
 if("l4","l5","v","0").	
 if("l7","l8","v","0").	
@@ -37,4 +38,4 @@ if("l7","l8","v","0").
 
 
 
-//expected output:("l10","u").
+//expected output:("l5","y").

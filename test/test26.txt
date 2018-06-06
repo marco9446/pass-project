@@ -8,18 +8,19 @@
 //L8:  }
 //L9: }		
 //L10: else{
-//L11:   if(z>0){
-//L12: 	    u:=y;
-//L13: 	 }
-//L14:   else{
-//L15: 	    u:=z;
-//L16:   }
-//L17:  }
-//L18: sink(x);		
+//L11    z = x
+//L12:   if(z>0){
+//L13: 	    u:=y;
+//L14: 	 }
+//L15:   else{
+//L16: 	    u:=z;
+//L17:   }
+//L18:  }
+//L19: sink(x);		
 
 source("l1","x").
 
-sink("l18","x").	
+sink("l19","x").	
 
 follows("l2","l1").
 follows("l3","l2").
@@ -34,31 +35,33 @@ follows("l10","l1").
 follows("l11","l10").
 follows("l12","l11").
 follows("l13","l12").
-follows("l14","l10").
-follows("l15","l14").
+follows("l14","l13").
+follows("l15","l11").
 follows("l16","l15").
-follows("l17","l13").
 follows("l17","l16").
-follows("l18","l9").
 follows("l18","l17").
+follows("l18","l14").
+follows("l19","l9").
+follows("l19","l18").
 
 join("l9","l5","l8").
-join("l17","l13","l16").
-join("l18","l9","l17").
+join("l18","l14","l17").
+join("l19","l9","l18").
 
+assign("l11","z","x","0").
 assign("l4","x","y","z").
 assign("l7","u","0","0").
-assign("l12","u","y","0").
-assign("l15","u","z","0").
+assign("l13","u","y","0").
+assign("l16","u","z","0").
 
 
 if("l2","l3","y","0").
 if("l3","l4","z","0").
 if("l6","l7","z","0").
 if("l10","l11","y","0").
-if("l11","l12","z","0").
-if("l14","l15","z","0").
+if("l12","l12","z","0").
+if("l15","l15","z","0").
 
 
-// il loro exp out era: ("l7","x"), ("l17","x")
-//expected output: ("l7","x"), ("l11","x").
+
+//expected output: ("l7","x"), ("l18","x") or ("l7","x"), ("L11","x").

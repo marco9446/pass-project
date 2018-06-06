@@ -3,14 +3,14 @@
 //L3: z:=source();
 //L4: s:=source();
 //L5: if(t>0){
-//L6: u:=x+y;
-//L7: v:=0;
-//L8: w:=0;
+//L6:   u:=x+y;
+//L7:   v:=0;
+//L8:   w:=0;
 //L9: }
 //L10: else{
-//L11: u:=0;
-//L12: v:=y+z;
-//L13: w:=z+s;
+//L11:      u:=0;
+//L12:      v:=y+z;
+//L13:      w:=z+s;
 //L14: }
 //L15: sink(u);
 //L16: sink(v);
@@ -45,7 +45,7 @@ follows("l16","l15").
 follows("l17","l16").
 
 
-join("l15","l9","l4").
+join("l15","l9","l14").
 
 assign("l6","u","x","y").
 assign("l7","v","0","0").
@@ -58,5 +58,5 @@ assign("l13","w","z","s").
 if("l5","l6","t","0").
 if("l10","l11","t","0").
 
-//expected output: ("l7","u"), ("l14","v"), ("l14","w").
+//expected output: ("l7","u"), ("l13","v"), ("l14","w").
 
