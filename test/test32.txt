@@ -55,8 +55,8 @@ assign("l11","z","3","0").
 assign("l12","z","x","0").
 assign("l4","x","y","z").
 assign("l7","u","0","0").
-assign("l13","u","y","0").
-assign("l16","u","z","0").
+assign("l14","u","y","0").
+assign("l17","u","z","0").
 
 
 if("l2","l3","y","0").
@@ -66,4 +66,4 @@ if("l10","l11","y","0").
 if("l13","l14","z","0").
 if("l16","l17","z","0").
 
-//expected output: ("l19","u").
+//expected output: ("l19","u"), or ("l13","z").

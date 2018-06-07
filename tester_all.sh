@@ -1,7 +1,7 @@
 #!/bin/bash
 TEMP_FILE="out.dl"
-MAIN_FILE="paths.dl"
-FUNCTION_TO_SHOW="final_sanitize"
+MAIN_FILE="pass_project.dl"
+FUNCTION_TO_SHOW="sanitize"
 
 
 
