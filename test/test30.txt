@@ -62,4 +62,4 @@ if("l10","l11","y","0").
 if("l12","l13","z","0").
 if("l15","l16","z","0").
 
-//expected output: ("l18","u").
+//expected output: ("l18","u") or ("l12","z").

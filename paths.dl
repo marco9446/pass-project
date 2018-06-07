@@ -313,12 +313,20 @@ dependencies(belonging_label,j,v,d, s ) :- s="right", ( assign(j,v,d,_); assign(
                                     sink(_,v). 
                                     
 
-dependencies(belonging_label,j,v,v,s ) :- s="right", find_closest_assign_of_var_in_if(l1,j,v),
+dependencies(belonging_label,belonging_label,v,v,s ) :- s="right", find_closest_assign_of_var_in_if(l1,belonging_label,v),
                                         !assign_constant(l1),
                                         assign(la,z,d1,d2), belonging_if(belonging_label,la),
                                         assign_constant(la).
 
 
+dependencies(belonging_label,j,v,d,s ) :-   s="right", var_in_sink_NOT_assigned_in_a_path(_, j, v),
+                                belonging_if(belonging_label,j),
+                            find_previous(l,j), ( assign(l,v,d,_);assign(l,v,_,d)), 
+                            candidate(ld,d), reachable(l,ld),
+                            sink(_,v).
+// TODO: AGGIUNGI find_closest ....etc...
+
+dependencies(if_label,j,v,v, s ) :-  s="right",source_sink_NOT_assigned_in_a_path(if_label, j, v).
 
 
 dependencies(belonging_label,j,v,v, s ) :- s="left", ( assign(j,v,d,_); assign(j,v,_,d) ),
@@ -345,17 +353,7 @@ dependencies(belonging_label,j,v,v ,s) :-  s="left", ( assign(j,v,d,_); assign(j
 
 
 
-// /*  There may a case where a variable v, requested in a sink method, is assigned to something else in a 
-//     path (eg. in the if path) but not assigned in another path (eg. the else path).
-//     If that variable was assigned to something else before the if-path, then the else path has to take it 
-//     into account. This function therefore sets this dependency.
-// */
-dependencies(belonging_label,j,v,d,s ) :-   s="right", var_in_sink_NOT_assigned_in_a_path(_, j, v),
-                                belonging_if(belonging_label,j),
-                            find_previous(l,j), ( assign(l,v,d,_);assign(l,v,_,d)), 
-                            candidate(ld,d), reachable(l,ld),
-                            sink(_,v).
-// TODO: AGGIUNGI find_closest ....etc...
+
 
 
 dependencies(belonging_label,j,v,v,s ) :-  s="left",  var_in_sink_NOT_assigned_in_a_path(_, j, v),
@@ -369,7 +367,6 @@ dependencies(belonging_label,j,v,v,s ) :-  s="left",  var_in_sink_NOT_assigned_i
 
 
 dependencies(if_label,j,v,v, s ) :- s="left",source_sink_NOT_assigned_in_a_path(if_label, j, v).
-dependencies(if_label,j,v,v, s ) :-  s="right",source_sink_NOT_assigned_in_a_path(if_label, j, v).
 
 
 // dependencies(if_label,j,v,v ) :- source_sink_NOT_assigned_in_a_path(if_label, j, v),
@@ -435,7 +432,7 @@ sanitize_no_if(l,b) :- !if(_,_,_,_),
 
 
 .decl not_successive_if(i:label, j:label)
-.output not_successive_if(IO=stdout)
+// .output not_successive_if(IO=stdout)
 not_successive_if(i0,i2) :- if(i0,_,_,_), if(i1,_,_,_), if(i2,_,_,_),
                             reachable(i2,i0), reachable(i2,i1), reachable(i1,i0),
                             !reachable(i0,i1), !reachable(i1,i2),
@@ -445,13 +442,13 @@ not_successive_if(i0,i2) :- if(i0,_,_,_), if(i1,_,_,_), if(i2,_,_,_),
 
 
 .decl successive_if(i:label, j:label) /*The if in label i is the successive if of the if in label j*/
-.output successive_if(IO=stdout)
+// .output successive_if(IO=stdout)
 successive_if(i0,i2) :- if(i0,_,_,_), if(i2,_,_,_), reachable(i2,i0),
                         if_else_finder(i2,_,_), !not_successive_if(i0,i2).
 
 
 .decl new_reachable(l:label, j:label)
-.output new_reachable(IO=stdout)
+// .output new_reachable(IO=stdout)
 new_reachable(l,j) :- reachable(l,j).
 new_reachable(l10,l6)  :- reachable(l10,l9), if_else_finder(l6,l9,_).
 
@@ -478,7 +475,7 @@ NOT_find_all_assign_of_var_in_if(l1,j1,v1) :- find_all_assign_of_var_in_if(l1,j1
 
 .decl find_closest_assign_of_var_in_if(l:label, j:label, v:var)
 
-// .output find_closest_assign_of_var_in_if(IO=stdout)
+.output find_closest_assign_of_var_in_if(IO=stdout)
 
 find_closest_assign_of_var_in_if(l,j,v) :- find_all_assign_of_var_in_if(l,j,v), !NOT_find_all_assign_of_var_in_if(l,j,v),
                                             (

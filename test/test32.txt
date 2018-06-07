@@ -21,7 +21,7 @@
 
 source("l1","x").
 
-sink("l19","u").	
+sink("l20","u").	
 
 follows("l2","l1").
 follows("l3","l2").
@@ -37,7 +37,7 @@ follows("l11","l10").
 follows("l12","l11").
 follows("l13","l12").
 follows("l14","l13").
-follows("l15","l16").
+follows("l15","l14").
 follows("l16","l12").
 follows("l17","l16").
 follows("l18","l17").
@@ -51,8 +51,8 @@ join("l19","l15","l18").
 join("l20","l9","l19").
 
 
-assign("l10","z","x","0").
 assign("l11","z","3","0").
+assign("l12","z","x","0").
 assign("l4","x","y","z").
 assign("l7","u","0","0").
 assign("l13","u","y","0").
