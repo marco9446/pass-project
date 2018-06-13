@@ -45,29 +45,10 @@ do
         IFS=',' read -r -a arrayExpected <<< "$labelsExpected2"
         IFS=',' read -r -a arrayFound <<< "$labelsFound2"
 
-        color=$GREEN 
-        show=false
+        color=$NC
 
-        if [[ ${#arrayFound[@]} != ${#arrayExpected[@]} &&  $exp != *"or"* ]]; then
-            color=$RED
-            echo -e "$labelsFound1\n${color}$exp ${NC}\n"
-            continue
+        echo -e "$vr\n${color}$exp ${NC}\n"
 
-        elif [[ ${#arrayFound[@]} != ${#arrayExpected[@]} &&  $exp = *"or"* ]]; then
-            color=$PINK
-            show=true
-        fi
-        for element in "${arrayFound[@]}"
-        do
-            if [[ ! " ${arrayExpected[@]} " =~ "$element" ]]; then
-                color=$RED
-                echo -e "$labelsFound1\n${color}$exp ${NC}\n"
-                break
-            fi
-        done
-        if [[ $show = true && "$color" != "$RED" ]]; then 
-            echo -e "$labelsFound1\n${color}$exp ${NC}\n"
-        fi
         remove_temp_file;
     fi
 done
